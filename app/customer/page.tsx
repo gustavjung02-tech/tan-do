@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CustomerBottomNav } from "@/components/layout/customer-bottom-nav";
+import { ProductOptionPicker, productNeedsOptions } from "@/components/ui/product-option-picker";
+import type { Product, SelectedProductOptions } from "@/lib/mock/types";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatMoney } from "@/lib/utils";
 
@@ -14,11 +16,10 @@ export default function CustomerPage() {
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [visibleLimit, setVisibleLimit] = useState(40);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [optionProduct, setOptionProduct] = useState<Product | null>(null);
 
   const categories = useMemo(() => {
-    const values = products
-      .map((product) => product.category?.trim())
-      .filter(Boolean) as string[];
+    const values = products.map((product) => product.category?.trim()).filter(Boolean) as string[];
     return [ALL_CATEGORIES, ...Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "vi"))];
   }, [products]);
 
@@ -30,7 +31,8 @@ export default function CustomerPage() {
         || product.name.toLowerCase().includes(keyword)
         || product.sku.toLowerCase().includes(keyword)
         || product.brand?.toLowerCase().includes(keyword)
-        || product.category?.toLowerCase().includes(keyword);
+        || product.category?.toLowerCase().includes(keyword)
+        || product.optionGroups?.some((group) => group.values.some((value) => value.toLowerCase().includes(keyword)));
       return matchCategory && matchKeyword;
     });
   }, [products, searchText, selectedCategory]);
@@ -45,6 +47,20 @@ export default function CustomerPage() {
     setFilterOpen(false);
   }
 
+  function handleAdd(product: Product) {
+    if (productNeedsOptions(product)) {
+      setOptionProduct(product);
+      return;
+    }
+    addToCart(product.id);
+  }
+
+  function confirmOptions(options: SelectedProductOptions) {
+    if (!optionProduct) return;
+    addToCart(optionProduct.id, options);
+    setOptionProduct(null);
+  }
+
   return (
     <main className="phone-page pb-28">
       <section className="mx-auto max-w-md px-4 pb-6 pt-5">
@@ -55,37 +71,19 @@ export default function CustomerPage() {
           </Link>
           <Link href="/customer/cart" className="relative text-2xl leading-none text-slate-900" aria-label="Giỏ hàng">
             🛒
-            {cartCount > 0 && (
-              <span className="absolute -right-3 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[11px] font-black text-white">
-                {cartCount}
-              </span>
-            )}
+            {cartCount > 0 && <span className="absolute -right-3 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[11px] font-black text-white">{cartCount}</span>}
           </Link>
         </header>
 
         <div className="mt-7 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 to-lime-100 p-5 card-shadow ring-1 ring-emerald-100">
-          <div className="grid grid-cols-[1fr_120px] items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-black leading-tight text-slate-950">Đặt hàng nhanh<br />Giao dịch dễ dàng</h1>
-              <p className="mt-4 text-sm leading-6 text-slate-600">Sản phẩm có ảnh rõ, giá cập nhật từ hệ thống Tân Đô.</p>
-            </div>
-            <div className="relative h-28">
-              <div className="absolute bottom-2 left-6 h-16 w-16 rounded-xl bg-amber-300 shadow-md ring-2 ring-amber-200" />
-              <div className="absolute left-1 top-5 h-16 w-16 rounded-xl bg-amber-200 shadow-md ring-2 ring-amber-100" />
-              <div className="absolute right-1 top-1 h-16 w-16 rounded-xl bg-amber-400 shadow-md ring-2 ring-amber-300" />
-            </div>
-          </div>
+          <h1 className="text-2xl font-black leading-tight text-slate-950">Đặt hàng nhanh<br />Giao dịch dễ dàng</h1>
+          <p className="mt-4 text-sm leading-6 text-slate-600">Sản phẩm có ảnh rõ, nhóm hàng chuẩn theo catalog Bếp Sỉ/Tân Đô.</p>
         </div>
 
         <section className="mt-5 rounded-2xl bg-white p-3 card-shadow ring-1 ring-slate-100">
           <label className="grid gap-2 text-sm font-bold text-slate-700">
             Tìm sản phẩm
-            <input
-              value={searchText}
-              onChange={(event) => { setSearchText(event.target.value); setVisibleLimit(40); }}
-              className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-700"
-              placeholder="Nhập tên, mã, thương hiệu..."
-            />
+            <input value={searchText} onChange={(event) => { setSearchText(event.target.value); setVisibleLimit(40); }} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-700" placeholder="Nhập tên, mã, vị, thương hiệu..." />
           </label>
         </section>
 
@@ -100,70 +98,40 @@ export default function CustomerPage() {
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={() => setFilterOpen((value) => !value)} className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white">
-              {filterOpen ? "Đóng nhóm" : "Chọn nhóm"}
-            </button>
-            <button onClick={() => { setSelectedCategory(ALL_CATEGORIES); setVisibleLimit(40); }} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">
-              Tất cả
-            </button>
+            <button onClick={() => setFilterOpen((value) => !value)} className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white">{filterOpen ? "Đóng nhóm" : "Chọn nhóm"}</button>
+            <button onClick={() => { setSelectedCategory(ALL_CATEGORIES); setVisibleLimit(40); }} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">Tất cả</button>
           </div>
 
           {filterOpen && (
             <div className="mt-3 grid max-h-80 grid-cols-2 gap-2 overflow-y-auto rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
-              {categories.map((category) => {
-                const active = selectedCategory === category;
-                return (
-                  <button
-                    key={category}
-                    onClick={() => { setSelectedCategory(category); setVisibleLimit(40); setFilterOpen(false); }}
-                    className={active ? "rounded-xl bg-emerald-700 px-3 py-3 text-left text-sm font-black text-white" : "rounded-xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}
-                  >
-                    {category}
-                  </button>
-                );
-              })}
+              {categories.map((category) => (
+                <button key={category} onClick={() => { setSelectedCategory(category); setVisibleLimit(40); setFilterOpen(false); }} className={selectedCategory === category ? "rounded-xl bg-emerald-700 px-3 py-3 text-left text-sm font-black text-white" : "rounded-xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{category}</button>
+              ))}
             </div>
           )}
         </section>
 
-        {productLoadError && (
-          <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 ring-1 ring-amber-100">
-            Chưa tải được dữ liệu mới nhất, đang dùng dữ liệu dự phòng.
-          </div>
-        )}
+        {productLoadError && <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 ring-1 ring-amber-100">Chưa tải được dữ liệu mới nhất, đang dùng dữ liệu dự phòng.</div>}
 
         <section className="mt-4 grid gap-3">
-          {filteredProducts.length === 0 ? (
-            <div className="rounded-2xl bg-white p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
-              Không có sản phẩm phù hợp.
-            </div>
-          ) : displayedProducts.map((product) => (
+          {filteredProducts.length === 0 ? <div className="rounded-2xl bg-white p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Không có sản phẩm phù hợp.</div> : displayedProducts.map((product) => (
             <article key={product.id} className="grid grid-cols-[72px_1fr_42px] items-center gap-3 rounded-2xl bg-white p-3 card-shadow ring-1 ring-slate-100">
-              {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="h-20 w-16 rounded-xl object-cover" loading="lazy" />
-              ) : (
-                <div className="grid h-20 w-16 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>
-              )}
+              {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-20 w-16 rounded-xl object-cover" loading="lazy" /> : <div className="grid h-20 w-16 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>}
               <div className="min-w-0">
                 <h3 className="truncate text-base font-black text-slate-950">{product.name}</h3>
                 <p className="mt-1 truncate text-sm text-slate-500">{product.category || "Chưa phân nhóm"}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-400">{product.unit.charAt(0).toUpperCase() + product.unit.slice(1)}</p>
+                {productNeedsOptions(product) && <p className="mt-1 text-xs font-black text-amber-700">Cần chọn vị/biến thể</p>}
                 <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p>
               </div>
-              <button onClick={() => addToCart(product.id)} className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-700 text-2xl font-semibold leading-none text-white shadow-sm" aria-label={`Thêm ${product.name} vào giỏ`}>
-                +
-              </button>
+              <button onClick={() => handleAdd(product)} className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-700 text-2xl font-semibold leading-none text-white shadow-sm" aria-label={`Thêm ${product.name} vào giỏ`}>+</button>
             </article>
           ))}
-          {visibleLimit < filteredProducts.length && (
-            <button onClick={() => setVisibleLimit((current) => current + 40)} className="rounded-2xl bg-white px-4 py-4 font-black text-emerald-700 ring-1 ring-emerald-100">
-              Xem thêm sản phẩm
-            </button>
-          )}
+          {visibleLimit < filteredProducts.length && <button onClick={() => setVisibleLimit((current) => current + 40)} className="rounded-2xl bg-white px-4 py-4 font-black text-emerald-700 ring-1 ring-emerald-100">Xem thêm sản phẩm</button>}
         </section>
       </section>
 
       <CustomerBottomNav />
+      {optionProduct && <ProductOptionPicker product={optionProduct} onClose={() => setOptionProduct(null)} onConfirm={confirmOptions} />}
     </main>
   );
 }

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { mockProducts } from "@/lib/mock/data";
-import type { CartItem, Order, OrderStatus, Product } from "@/lib/mock/types";
+import type { CartItem, Order, OrderStatus, Product, SelectedProductOptions } from "@/lib/mock/types";
 import { fetchProductsWithFallback } from "@/lib/services/products";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -28,9 +28,9 @@ type AppStore = {
   hydrated: boolean;
   reloadProducts: () => Promise<void>;
   reloadOrders: () => Promise<void>;
-  addToCart: (productId: string) => void;
-  decreaseCartItem: (productId: string) => void;
-  removeCartItem: (productId: string) => void;
+  addToCart: (productId: string, options?: SelectedProductOptions) => void;
+  decreaseCartItem: (productId: string, options?: SelectedProductOptions) => void;
+  removeCartItem: (productId: string, options?: SelectedProductOptions) => void;
   clearCart: () => void;
   createCustomerOrder: (payload: { customerNote?: string; clientRequestId?: string }) => Promise<Order | null>;
   acceptOrder: (orderId: string) => Promise<void>;
@@ -40,7 +40,8 @@ type AppStore = {
 };
 
 const StoreContext = createContext<AppStore | null>(null);
-const CART_KEY = "tan-do:cart:v1";
+const CART_KEY = "tan-do:cart:v2";
+
 function safeParse<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -48,6 +49,29 @@ function safeParse<T>(value: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function normalizeOptions(options?: SelectedProductOptions): SelectedProductOptions | undefined {
+  if (!options) return undefined;
+  const entries = Object.entries(options)
+    .map(([key, value]) => [key.trim(), value.trim()] as const)
+    .filter(([key, value]) => key && value);
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function sameOptions(a?: SelectedProductOptions, b?: SelectedProductOptions) {
+  const left = normalizeOptions(a) ?? {};
+  const right = normalizeOptions(b) ?? {};
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
+}
+
+export function formatProductWithOptions(productName: string, options?: SelectedProductOptions) {
+  const normalized = normalizeOptions(options);
+  if (!normalized) return productName;
+  const suffix = Object.entries(normalized).map(([key, value]) => `${key}: ${value}`).join(", ");
+  return `${productName} — ${suffix}`;
 }
 
 function toOrderItems(products: Product[], items: CartItem[], timestamp = Date.now()): Order["items"] {
@@ -59,7 +83,7 @@ function toOrderItems(products: Product[], items: CartItem[], timestamp = Date.n
       return {
         id: `oi-${timestamp}-${index}`,
         productId: product.id,
-        productName: product.name,
+        productName: formatProductWithOptions(product.name, item.options),
         unitPrice: product.price,
         quantity: item.quantity,
         lineTotal: product.price * item.quantity,
@@ -152,27 +176,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     hydrated,
     reloadProducts,
     reloadOrders,
-    addToCart(productId) {
+    addToCart(productId, options) {
+      const normalizedOptions = normalizeOptions(options);
       setCart((current) => {
-        const exists = current.find((item) => item.productId === productId);
-        if (!exists) return [...current, { productId, quantity: 1 }];
-        return current.map((item) => item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item);
+        const exists = current.find((item) => item.productId === productId && sameOptions(item.options, normalizedOptions));
+        if (!exists) return [...current, { productId, quantity: 1, options: normalizedOptions }];
+        return current.map((item) => item.productId === productId && sameOptions(item.options, normalizedOptions) ? { ...item, quantity: item.quantity + 1 } : item);
       });
     },
-    decreaseCartItem(productId) {
+    decreaseCartItem(productId, options) {
+      const normalizedOptions = normalizeOptions(options);
       setCart((current) => current
-        .map((item) => item.productId === productId ? { ...item, quantity: item.quantity - 1 } : item)
+        .map((item) => item.productId === productId && sameOptions(item.options, normalizedOptions) ? { ...item, quantity: item.quantity - 1 } : item)
         .filter((item) => item.quantity > 0));
     },
-    removeCartItem(productId) {
-      setCart((current) => current.filter((item) => item.productId !== productId));
+    removeCartItem(productId, options) {
+      const normalizedOptions = normalizeOptions(options);
+      setCart((current) => current.filter((item) => !(item.productId === productId && sameOptions(item.options, normalizedOptions))));
     },
     clearCart() {
       setCart([]);
     },
     async createCustomerOrder(payload) {
-      const timestamp = Date.now();
-      const localItems = toOrderItems(products, cart, timestamp);
+      const localItems = toOrderItems(products, cart);
       if (localItems.length === 0) return null;
 
       try {
@@ -216,8 +242,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
     },
     async createManualOrder(payload) {
-      const timestamp = Date.now();
-      const localItems = toOrderItems(products, payload.items, timestamp);
+      const localItems = toOrderItems(products, payload.items);
       if (localItems.length === 0) return null;
 
       try {

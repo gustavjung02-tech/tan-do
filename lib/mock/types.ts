@@ -1,3 +1,10 @@
+export type ProductOptionGroup = {
+  name: string;
+  values: string[];
+};
+
+export type SelectedProductOptions = Record<string, string>;
+
 export type Product = {
   id: string;
   name: string;
@@ -8,11 +15,18 @@ export type Product = {
   isActive: boolean;
   brand?: string;
   category?: string;
+  industry?: string;
+  sourceGroup?: string;
+  priceMode?: "fixed" | "market" | string;
+  priceLabel?: string;
+  optionGroups?: ProductOptionGroup[];
+  variantKeys?: string[];
 };
 
 export type CartItem = {
   productId: string;
   quantity: number;
+  options?: SelectedProductOptions;
 };
 
 export type OrderStatus = "new" | "confirmed" | "processing" | "completed" | "cancelled";

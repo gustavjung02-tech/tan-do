@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { SalesBottomNav } from "@/components/layout/sales-bottom-nav";
-import type { CartItem } from "@/lib/mock/types";
+import { ProductOptionPicker, optionLabel, productNeedsOptions } from "@/components/ui/product-option-picker";
+import type { CartItem, Product, SelectedProductOptions } from "@/lib/mock/types";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatMoney } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ export default function ManualOrderPage() {
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [optionProduct, setOptionProduct] = useState<Product | null>(null);
   const submittingRef = useRef(false);
 
   const rows = manualItems
@@ -48,23 +50,45 @@ export default function ManualOrderPage() {
     });
   }, [products, searchText, selectedCategory]);
 
-  function addProduct(productId: string) {
+  function sameOptions(a?: SelectedProductOptions, b?: SelectedProductOptions) {
+    const left = a ?? {};
+    const right = b ?? {};
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
+  }
+
+  function addProduct(productId: string, options?: SelectedProductOptions) {
     setManualItems((current) => {
-      const exists = current.find((item) => item.productId === productId);
-      if (!exists) return [...current, { productId, quantity: 1 }];
-      return current.map((item) => item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item);
+      const exists = current.find((item) => item.productId === productId && sameOptions(item.options, options));
+      if (!exists) return [...current, { productId, quantity: 1, options }];
+      return current.map((item) => item.productId === productId && sameOptions(item.options, options) ? { ...item, quantity: item.quantity + 1 } : item);
     });
     setCreatedCode(null);
     setSubmitError(null);
   }
 
-  function decreaseProduct(productId: string) {
-    setManualItems((current) => current.map((item) => item.productId === productId ? { ...item, quantity: item.quantity - 1 } : item).filter((item) => item.quantity > 0));
+  function startAddProduct(product: Product) {
+    if (productNeedsOptions(product)) {
+      setOptionProduct(product);
+      return;
+    }
+    addProduct(product.id);
+  }
+
+  function confirmOptions(options: SelectedProductOptions) {
+    if (!optionProduct) return;
+    addProduct(optionProduct.id, options);
+    setOptionProduct(null);
+  }
+
+  function decreaseProduct(productId: string, options?: SelectedProductOptions) {
+    setManualItems((current) => current.map((item) => item.productId === productId && sameOptions(item.options, options) ? { ...item, quantity: item.quantity - 1 } : item).filter((item) => item.quantity > 0));
     setCreatedCode(null);
   }
 
-  function removeProduct(productId: string) {
-    setManualItems((current) => current.filter((item) => item.productId !== productId));
+  function removeProduct(productId: string, options?: SelectedProductOptions) {
+    setManualItems((current) => current.filter((item) => !(item.productId === productId && sameOptions(item.options, options))));
     setCreatedCode(null);
   }
 
@@ -149,22 +173,23 @@ export default function ManualOrderPage() {
           <div className="mt-3 grid max-h-56 gap-3 overflow-y-auto pr-1">
             {rows.length === 0 ? (
               <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Chọn sản phẩm bên dưới để lên đơn.</p>
-            ) : rows.map(({ product, quantity }) => product && (
+            ) : rows.map(({ product, quantity, options }) => product && (
               <article key={product.id} className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-bold text-slate-950">{product.name}</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">{product.category || "Chưa phân nhóm"}</p>
+                    {optionLabel(options) && <p className="mt-1 text-xs font-black text-amber-700">{optionLabel(options)}</p>}
                     <p className="mt-1 text-sm font-bold text-blue-700">{formatMoney(product.price)}</p>
                   </div>
                   <p className="text-right font-black text-slate-950">{formatMoney(product.price * quantity)}</p>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
-                  <button disabled={submitting} onClick={() => removeProduct(product.id)} className="text-sm font-bold text-slate-400 disabled:opacity-40">Xóa</button>
+                  <button disabled={submitting} onClick={() => removeProduct(product.id, options)} className="text-sm font-bold text-slate-400 disabled:opacity-40">Xóa</button>
                   <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white">
-                    <button disabled={submitting} onClick={() => decreaseProduct(product.id)} className="h-8 w-9 disabled:opacity-40">−</button>
+                    <button disabled={submitting} onClick={() => decreaseProduct(product.id, options)} className="h-8 w-9 disabled:opacity-40">−</button>
                     <span className="w-9 text-center text-sm font-black">{quantity}</span>
-                    <button disabled={submitting} onClick={() => addProduct(product.id)} className="h-8 w-9 disabled:opacity-40">+</button>
+                    <button disabled={submitting} onClick={() => addProduct(product.id, options)} className="h-8 w-9 disabled:opacity-40">+</button>
                   </div>
                 </div>
               </article>
@@ -206,11 +231,12 @@ export default function ManualOrderPage() {
 
         <section className="mt-3 grid gap-3">
           {filteredProducts.map((product) => (
-            <button key={product.id} disabled={submitting} onClick={() => addProduct(product.id)} className="grid grid-cols-[56px_1fr_38px] items-center gap-3 rounded-2xl bg-white p-3 text-left card-shadow ring-1 ring-slate-100 disabled:opacity-50">
+            <button key={product.id} disabled={submitting} onClick={() => startAddProduct(product)} className="grid grid-cols-[56px_1fr_38px] items-center gap-3 rounded-2xl bg-white p-3 text-left card-shadow ring-1 ring-slate-100 disabled:opacity-50">
               {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-14 w-12 rounded-lg object-cover" loading="lazy" /> : <div className="grid h-14 w-12 place-items-center rounded-lg bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>}
               <div className="min-w-0">
                 <p className="font-bold text-slate-950">{product.name}</p>
                 <p className="mt-1 truncate text-xs font-semibold text-slate-500">{product.category || "Chưa phân nhóm"}</p>
+                {productNeedsOptions(product) && <p className="mt-1 text-xs font-black text-amber-700">Cần chọn vị/biến thể</p>}
                 <p className="mt-1 text-sm font-black text-blue-700">{formatMoney(product.price)}</p>
               </div>
               <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-700 text-xl text-white">+</span>
@@ -219,6 +245,7 @@ export default function ManualOrderPage() {
         </section>
       </section>
       <SalesBottomNav />
+      {optionProduct && <ProductOptionPicker product={optionProduct} onClose={() => setOptionProduct(null)} onConfirm={confirmOptions} />}
     </main>
   );
 }

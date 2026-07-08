@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id,name,sku,price,image_url,unit,is_active,brand,category,created_at,updated_at")
+    .select("id,name,sku,price,image_url,unit,is_active,brand,category,industry,source_group,price_mode,price_label,option_groups,variant_keys,created_at,updated_at")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabaseAdmin
     .from("products")
     .insert(body)
-    .select("id,name,sku,price,image_url,unit,is_active,brand,category,created_at,updated_at")
+    .select("id,name,sku,price,image_url,unit,is_active,brand,category,industry,source_group,price_mode,price_label,option_groups,variant_keys,created_at,updated_at")
     .single();
 
   if (error) {

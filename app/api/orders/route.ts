@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, requireStaff } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifyStaffAboutNewOrder } from "@/lib/services/notifications";
-import type { CartItem, Order, OrderStatus } from "@/lib/mock/types";
+import type { CartItem, Order, OrderStatus, SelectedProductOptions } from "@/lib/mock/types";
 
 type OrderItemRow = {
   id: string;
@@ -37,6 +37,21 @@ type CreateOrderBody = {
   items?: CartItem[];
   clientRequestId?: string;
 };
+
+
+function normalizeOptions(options?: SelectedProductOptions): SelectedProductOptions | undefined {
+  if (!options) return undefined;
+  const entries = Object.entries(options)
+    .map(([key, value]) => [key.trim(), value.trim()] as const)
+    .filter(([key, value]) => key && value);
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function formatProductNameWithOptions(productName: string, options?: SelectedProductOptions) {
+  const normalized = normalizeOptions(options);
+  if (!normalized) return productName;
+  return `${productName} — ${Object.entries(normalized).map(([key, value]) => `${key}: ${value}`).join(", ")}`;
+}
 
 function mapOrder(row: OrderRow): Order {
   const items = (row.order_items ?? []).map((item) => ({
@@ -149,7 +164,7 @@ export async function POST(request: Request) {
   const productIds = items.map((item) => item.productId);
   const { data: products, error: productsError } = await supabaseAdmin
     .from("products")
-    .select("id,name,price")
+    .select("id,name,price,option_groups")
     .in("id", productIds);
 
   if (productsError) {
@@ -163,7 +178,7 @@ export async function POST(request: Request) {
     const quantity = item.quantity;
     return {
       product_id: product.id,
-      product_name: product.name,
+      product_name: formatProductNameWithOptions(product.name, item.options),
       unit_price: unitPrice,
       quantity,
       line_total: unitPrice * quantity,

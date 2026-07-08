@@ -8,6 +8,12 @@ export type ProductRow = {
   is_active: boolean;
   brand?: string | null;
   category?: string | null;
+  industry?: string | null;
+  source_group?: string | null;
+  price_mode?: string | null;
+  price_label?: string | null;
+  option_groups?: unknown;
+  variant_keys?: string[] | null;
   created_at?: string;
   updated_at?: string;
 };
