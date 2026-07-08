@@ -132,7 +132,6 @@ export function LoginForm() {
           <div className="text-center">
             <img src="/icons/tando-logo.png" alt="Tân Đô F&B" className="mx-auto h-24 w-24 rounded-3xl object-cover shadow-sm" />
             <h1 className="mt-4 text-2xl font-black text-slate-950">Tân Đô F&B</h1>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">Đặt hàng, xem lại đơn và xử lý đơn nội bộ trên một app nhẹ.</p>
           </div>
 
           <div className="mt-7 grid grid-cols-2 rounded-3xl bg-emerald-50 p-1 ring-1 ring-emerald-100">
@@ -194,10 +193,6 @@ export function LoginForm() {
         </div>
 
         <InstallAppButton />
-
-        <div className="mt-6 text-center text-xs font-bold leading-5 text-slate-400">
-          Khách và sales dùng chung app, nhưng dữ liệu và quyền truy cập được tách riêng.
-        </div>
       </section>
     </main>
   );
