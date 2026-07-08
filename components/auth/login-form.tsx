@@ -75,6 +75,13 @@ export function LoginForm() {
         });
 
         if (signupError) throw new Error(signupError.message);
+
+        const { data: signupSession } = await supabaseBrowser.auth.getSession();
+        if (!signupSession.session) {
+          setMessage("Tài khoản đã tạo. Anh cần xác nhận email trước khi tạo hồ sơ khách.");
+          return;
+        }
+
         await createCustomerProfile();
         await refreshProfile();
         router.replace("/customer");
