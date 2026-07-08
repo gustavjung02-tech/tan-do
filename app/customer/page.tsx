@@ -5,43 +5,43 @@ import { useMemo, useState } from "react";
 import { CustomerBottomNav } from "@/components/layout/customer-bottom-nav";
 import { ProductOptionPicker, productNeedsOptions } from "@/components/ui/product-option-picker";
 import type { Product, SelectedProductOptions } from "@/lib/mock/types";
+import { ALL_CATEGORIES, ALL_FAMILIES, categoryList, familyList, getProductFamily, productMatchesTaxonomy } from "@/lib/services/product-taxonomy";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatMoney } from "@/lib/utils";
-
-const ALL_CATEGORIES = "Tất cả";
 
 export default function CustomerPage() {
   const { products, productLoadError, addToCart, cartCount } = useAppStore();
   const [searchText, setSearchText] = useState("");
+  const [selectedFamily, setSelectedFamily] = useState(ALL_FAMILIES);
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [visibleLimit, setVisibleLimit] = useState(40);
   const [filterOpen, setFilterOpen] = useState(false);
   const [optionProduct, setOptionProduct] = useState<Product | null>(null);
 
-  const categories = useMemo(() => {
-    const values = products.map((product) => product.category?.trim()).filter(Boolean) as string[];
-    return [ALL_CATEGORIES, ...Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "vi"))];
-  }, [products]);
+  const families = useMemo(() => familyList(products), [products]);
+  const categories = useMemo(() => categoryList(products, selectedFamily), [products, selectedFamily]);
 
   const filteredProducts = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
     return products.filter((product) => {
-      const matchCategory = selectedCategory === ALL_CATEGORIES || product.category === selectedCategory;
+      const matchCategory = productMatchesTaxonomy(product, selectedFamily, selectedCategory);
       const matchKeyword = !keyword
         || product.name.toLowerCase().includes(keyword)
         || product.sku.toLowerCase().includes(keyword)
         || product.brand?.toLowerCase().includes(keyword)
         || product.category?.toLowerCase().includes(keyword)
+        || getProductFamily(product).toLowerCase().includes(keyword)
         || product.optionGroups?.some((group) => group.values.some((value) => value.toLowerCase().includes(keyword)));
       return matchCategory && matchKeyword;
     });
-  }, [products, searchText, selectedCategory]);
+  }, [products, searchText, selectedFamily, selectedCategory]);
 
   const displayedProducts = filteredProducts.slice(0, visibleLimit);
-  const hasFilter = Boolean(searchText || selectedCategory !== ALL_CATEGORIES);
+  const hasFilter = Boolean(searchText || selectedFamily !== ALL_FAMILIES || selectedCategory !== ALL_CATEGORIES);
 
   function clearFilters() {
     setSearchText("");
+    setSelectedFamily(ALL_FAMILIES);
     setSelectedCategory(ALL_CATEGORIES);
     setVisibleLimit(40);
     setFilterOpen(false);
@@ -92,21 +92,31 @@ export default function CustomerPage() {
             <div>
               <h2 className="text-base font-black text-slate-950">Lọc sản phẩm</h2>
               <p className="mt-1 text-xs font-semibold text-slate-500">Đang hiển thị {filteredProducts.length}/{products.length} sản phẩm</p>
-              <p className="mt-1 text-xs font-bold text-emerald-700">Nhóm: {selectedCategory}</p>
+              <p className="mt-1 text-xs font-bold text-emerald-700">{selectedFamily} · {selectedCategory}</p>
             </div>
             {hasFilter && <button onClick={clearFilters} className="text-xs font-black text-emerald-700">Xóa lọc</button>}
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={() => setFilterOpen((value) => !value)} className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white">{filterOpen ? "Đóng nhóm" : "Chọn nhóm"}</button>
-            <button onClick={() => { setSelectedCategory(ALL_CATEGORIES); setVisibleLimit(40); }} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">Tất cả</button>
-          </div>
+          <button onClick={() => setFilterOpen((value) => !value)} className="mt-3 w-full rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-black text-white">{filterOpen ? "Đóng bộ lọc" : "Mở bộ lọc"}</button>
 
           {filterOpen && (
-            <div className="mt-3 grid max-h-80 grid-cols-2 gap-2 overflow-y-auto rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
-              {categories.map((category) => (
-                <button key={category} onClick={() => { setSelectedCategory(category); setVisibleLimit(40); setFilterOpen(false); }} className={selectedCategory === category ? "rounded-xl bg-emerald-700 px-3 py-3 text-left text-sm font-black text-white" : "rounded-xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{category}</button>
-              ))}
+            <div className="mt-4 grid gap-4 rounded-3xl bg-slate-50 p-3 ring-1 ring-slate-100">
+              <div>
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Nhóm lớn</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {families.map((family) => (
+                    <button key={family} onClick={() => { setSelectedFamily(family); setSelectedCategory(ALL_CATEGORIES); setVisibleLimit(40); }} className={selectedFamily === family ? "rounded-2xl bg-emerald-700 px-2 py-3 text-xs font-black text-white" : "rounded-2xl bg-white px-2 py-3 text-xs font-black text-slate-700 ring-1 ring-slate-100"}>{family}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Nhóm con</p>
+                <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto">
+                  {categories.map((category) => (
+                    <button key={category} onClick={() => { setSelectedCategory(category); setVisibleLimit(40); }} className={selectedCategory === category ? "rounded-2xl bg-slate-950 px-3 py-3 text-left text-sm font-black text-white" : "rounded-2xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{category}</button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -119,7 +129,7 @@ export default function CustomerPage() {
               {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-20 w-16 rounded-xl object-cover" loading="lazy" /> : <div className="grid h-20 w-16 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>}
               <div className="min-w-0">
                 <h3 className="truncate text-base font-black text-slate-950">{product.name}</h3>
-                <p className="mt-1 truncate text-sm text-slate-500">{product.category || "Chưa phân nhóm"}</p>
+                <p className="mt-1 truncate text-sm text-slate-500">{getProductFamily(product)} · {product.category || "Chưa phân nhóm"}</p>
                 {productNeedsOptions(product) && <p className="mt-1 text-xs font-black text-amber-700">Cần chọn vị/biến thể</p>}
                 <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p>
               </div>

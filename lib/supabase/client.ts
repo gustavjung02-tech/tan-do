@@ -11,8 +11,12 @@ export function hasSupabaseEnv() {
 export const supabaseBrowser = hasSupabaseEnv()
   ? createClient(supabaseUrl!, supabaseKey!, {
       auth: {
+        storageKey: "tan-do:auth:v1",
         persistSession: true,
         autoRefreshToken: true,
+        detectSessionInUrl: false,
+        flowType: "pkce",
+        storage: typeof window !== "undefined" ? window.localStorage : undefined,
       },
     })
   : null;
