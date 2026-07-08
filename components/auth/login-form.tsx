@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { InstallAppButton } from "@/components/ui/install-app-button";
 
 type Tab = "customer" | "sales";
 type CustomerMode = "login" | "signup";
@@ -180,11 +181,19 @@ export function LoginForm() {
             {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{error}</p>}
             {message && <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 ring-1 ring-emerald-100">{message}</p>}
 
+            {tab === "customer" && (
+              <button disabled={loading} onClick={loginWithGoogle} className="mt-5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 font-black text-slate-800">
+                Tiếp tục với Google
+              </button>
+            )}
+
             <button disabled={loading} onClick={login} className="mt-5 w-full rounded-2xl bg-emerald-700 px-4 py-4 font-black text-white shadow-sm disabled:bg-slate-300">
               {loading ? "Đang xử lý..." : tab === "sales" ? "Vào sales" : customerMode === "signup" ? "Tạo tài khoản và vào đặt hàng" : "Vào đặt hàng"}
             </button>
           </section>
         </div>
+
+        <InstallAppButton />
 
         <div className="mt-6 text-center text-xs font-bold leading-5 text-slate-400">
           Khách và sales dùng chung app, nhưng dữ liệu và quyền truy cập được tách riêng.
