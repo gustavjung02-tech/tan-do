@@ -1,16 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SalesBottomNav } from "@/components/layout/sales-bottom-nav";
 import { ProductOptionPicker, optionLabel, productNeedsOptions } from "@/components/ui/product-option-picker";
 import type { CartItem, Product, SelectedProductOptions } from "@/lib/mock/types";
+import type { Customer } from "@/lib/services/customers";
 import { ALL_CATEGORIES, ALL_FAMILIES, categoryList, familyList, getProductFamily, productMatchesTaxonomy } from "@/lib/services/product-taxonomy";
 import { useAppStore } from "@/lib/store/app-store";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { formatMoney } from "@/lib/utils";
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabaseBrowser) return {};
+  const { data } = await supabaseBrowser.auth.getSession();
+  return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders,
+      ...(init?.headers ?? {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error ?? "Có lỗi khi xử lý dữ liệu.");
+  return payload as T;
+}
+
+type QuickCustomerForm = {
+  name: string;
+  phone: string;
+  address: string;
+  area: string;
+  ward: string;
+  district: string;
+  contactPerson: string;
+  note: string;
+  latitude: string;
+  longitude: string;
+};
+
+const emptyQuickCustomer: QuickCustomerForm = {
+  name: "",
+  phone: "",
+  address: "",
+  area: "",
+  ward: "",
+  district: "",
+  contactPerson: "",
+  note: "",
+  latitude: "",
+  longitude: "",
+};
 
 export default function ManualOrderPage() {
   const { products, createManualOrder } = useAppStore();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerName, setCustomerName] = useState("Khách tạo nhanh");
   const [customerPhone, setCustomerPhone] = useState("0900000999");
   const [salesNote, setSalesNote] = useState("");
@@ -23,6 +74,13 @@ export default function ManualOrderPage() {
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [filterOpen, setFilterOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+  const [customerSearchText, setCustomerSearchText] = useState("");
+  const [customerArea, setCustomerArea] = useState("Tất cả");
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
+  const [quickCustomer, setQuickCustomer] = useState<QuickCustomerForm>(emptyQuickCustomer);
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
   const [optionProduct, setOptionProduct] = useState<Product | null>(null);
   const submittingRef = useRef(false);
 
@@ -34,6 +92,21 @@ export default function ManualOrderPage() {
   const totalQuantity = rows.reduce((sum, item) => sum + item.quantity, 0);
   const families = useMemo(() => familyList(products), [products]);
   const categories = useMemo(() => categoryList(products, selectedFamily), [products, selectedFamily]);
+  const customerAreas = useMemo(() => ["Tất cả", ...Array.from(new Set(customers.map((customer) => customer.area?.trim()).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "vi"))], [customers]);
+
+  const filteredCustomers = useMemo(() => {
+    const keyword = customerSearchText.trim().toLowerCase();
+    return customers.filter((customer) => {
+      const matchArea = customerArea === "Tất cả" || customer.area === customerArea;
+      const matchKeyword = !keyword
+        || customer.name.toLowerCase().includes(keyword)
+        || customer.phone.toLowerCase().includes(keyword)
+        || customer.customer_code?.toLowerCase().includes(keyword)
+        || customer.address?.toLowerCase().includes(keyword)
+        || customer.contact_person?.toLowerCase().includes(keyword);
+      return matchArea && matchKeyword;
+    });
+  }, [customers, customerArea, customerSearchText]);
 
   const filteredProducts = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -49,6 +122,79 @@ export default function ManualOrderPage() {
       return matchTaxonomy && matchKeyword;
     });
   }, [products, searchText, selectedFamily, selectedCategory]);
+
+  async function loadCustomers() {
+    setCustomerLoading(true);
+    setCustomerError(null);
+    try {
+      const result = await fetchJson<{ customers: Customer[] }>("/api/customers");
+      setCustomers(result.customers);
+    } catch (error) {
+      setCustomerError(error instanceof Error ? error.message : "Không tải được danh sách khách.");
+    } finally {
+      setCustomerLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadCustomers();
+  }, []);
+
+  function chooseCustomer(customer: Customer) {
+    setSelectedCustomer(customer);
+    setCustomerName(customer.name);
+    setCustomerPhone(customer.phone);
+    setCustomerPickerOpen(false);
+    setCustomerError(null);
+    setSubmitError(null);
+  }
+
+  async function saveQuickCustomer() {
+    if (!quickCustomer.name.trim() || !quickCustomer.phone.trim()) {
+      setCustomerError("Cần nhập tên khách và số điện thoại.");
+      return;
+    }
+
+    setCustomerLoading(true);
+    setCustomerError(null);
+    try {
+      const result = await fetchJson<{ customer: Customer }>("/api/customers", {
+        method: "POST",
+        body: JSON.stringify(quickCustomer),
+      });
+      await loadCustomers();
+      chooseCustomer(result.customer);
+      setQuickCustomer(emptyQuickCustomer);
+      setQuickCustomerOpen(false);
+    } catch (error) {
+      setCustomerError(error instanceof Error ? error.message : "Không lưu được khách hàng.");
+    } finally {
+      setCustomerLoading(false);
+    }
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setCustomerError("Thiết bị không hỗ trợ định vị.");
+      return;
+    }
+    setCustomerLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setQuickCustomer((current) => ({
+          ...current,
+          latitude: String(position.coords.latitude),
+          longitude: String(position.coords.longitude),
+        }));
+        setCustomerLoading(false);
+      },
+      () => {
+        setCustomerError("Không lấy được vị trí. Anh kiểm tra quyền định vị của trình duyệt/PWA.");
+        setCustomerLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
 
   function sameOptions(a?: SelectedProductOptions, b?: SelectedProductOptions) {
     const left = a ?? {};
@@ -102,7 +248,7 @@ export default function ManualOrderPage() {
   async function createOrder() {
     if (submittingRef.current || rows.length === 0) return;
     if (!customerName.trim() || !customerPhone.trim()) {
-      setSubmitError("Cần nhập tên khách và số điện thoại trước khi tạo đơn.");
+      setSubmitError("Cần chọn khách hoặc nhập tên khách và số điện thoại trước khi tạo đơn.");
       setCartOpen(true);
       return;
     }
@@ -115,7 +261,7 @@ export default function ManualOrderPage() {
     try {
       const timeout = new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 15000));
       const order = await Promise.race([
-        createManualOrder({ customerName, customerPhone, salesNote, items: manualItems }),
+        createManualOrder({ customerRecordId: selectedCustomer?.id, customerName, customerPhone, salesNote, items: manualItems }),
         timeout,
       ]);
 
@@ -160,10 +306,18 @@ export default function ManualOrderPage() {
         )}
 
         <section className="mt-5 rounded-3xl bg-white p-4 card-shadow ring-1 ring-slate-100">
-          <h2 className="font-black text-slate-950">Thông tin khách</h2>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-black text-slate-950">Khách hàng</h2>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{selectedCustomer ? `${selectedCustomer.customer_code || "Khách"} · ${selectedCustomer.area || "Chưa khu vực"}` : "Chọn khách có sẵn hoặc tạo nhanh"}</p>
+            </div>
+            <button onClick={() => setCustomerPickerOpen(true)} className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-black text-white">Chọn khách</button>
+          </div>
           <div className="mt-3 grid gap-3">
-            <input value={customerName} disabled={submitting} onChange={(event) => { setCustomerName(event.target.value); setSubmitError(null); }} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700 disabled:bg-slate-50" placeholder="Tên khách" />
-            <input value={customerPhone} disabled={submitting} onChange={(event) => { setCustomerPhone(event.target.value); setSubmitError(null); }} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700 disabled:bg-slate-50" placeholder="Số điện thoại" />
+            <input value={customerName} disabled={submitting || Boolean(selectedCustomer)} onChange={(event) => { setCustomerName(event.target.value); setSubmitError(null); setSelectedCustomer(null); }} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700 disabled:bg-slate-50" placeholder="Tên khách" />
+            <input value={customerPhone} disabled={submitting || Boolean(selectedCustomer)} onChange={(event) => { setCustomerPhone(event.target.value); setSubmitError(null); setSelectedCustomer(null); }} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700 disabled:bg-slate-50" placeholder="Số điện thoại" />
+            {selectedCustomer?.address && <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-600 ring-1 ring-slate-100">{selectedCustomer.address}</p>}
+            {selectedCustomer && <button onClick={() => { setSelectedCustomer(null); setCustomerName("Khách tạo nhanh"); setCustomerPhone("0900000999"); }} className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">Bỏ chọn khách</button>}
             <textarea value={salesNote} disabled={submitting} onChange={(event) => setSalesNote(event.target.value)} className="min-h-16 rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700 disabled:bg-slate-50" placeholder="Ghi chú sales" />
           </div>
         </section>
@@ -179,26 +333,20 @@ export default function ManualOrderPage() {
 
           <input value={searchText} onChange={(event) => setSearchText(event.target.value)} className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Tìm tên, mã, vị, thương hiệu..." />
 
-          <button onClick={() => setFilterOpen((value) => !value)} className="mt-3 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white">
-            {filterOpen ? "Đóng bộ lọc" : "Mở bộ lọc"}
-          </button>
+          <button onClick={() => setFilterOpen((value) => !value)} className="mt-3 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white">{filterOpen ? "Đóng bộ lọc" : "Mở bộ lọc"}</button>
 
           {filterOpen && (
             <div className="mt-4 grid gap-4 rounded-3xl bg-slate-50 p-3 ring-1 ring-slate-100">
               <div>
                 <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Nhóm lớn</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {families.map((family) => (
-                    <button key={family} onClick={() => { setSelectedFamily(family); setSelectedCategory(ALL_CATEGORIES); }} className={selectedFamily === family ? "rounded-2xl bg-blue-700 px-2 py-3 text-xs font-black text-white" : "rounded-2xl bg-white px-2 py-3 text-xs font-black text-slate-700 ring-1 ring-slate-100"}>{family}</button>
-                  ))}
+                  {families.map((family) => <button key={family} onClick={() => { setSelectedFamily(family); setSelectedCategory(ALL_CATEGORIES); }} className={selectedFamily === family ? "rounded-2xl bg-blue-700 px-2 py-3 text-xs font-black text-white" : "rounded-2xl bg-white px-2 py-3 text-xs font-black text-slate-700 ring-1 ring-slate-100"}>{family}</button>)}
                 </div>
               </div>
               <div>
                 <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Nhóm con</p>
                 <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto">
-                  {categories.map((category) => (
-                    <button key={category} onClick={() => setSelectedCategory(category)} className={selectedCategory === category ? "rounded-2xl bg-slate-950 px-3 py-3 text-left text-sm font-black text-white" : "rounded-2xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{category}</button>
-                  ))}
+                  {categories.map((category) => <button key={category} onClick={() => setSelectedCategory(category)} className={selectedCategory === category ? "rounded-2xl bg-slate-950 px-3 py-3 text-left text-sm font-black text-white" : "rounded-2xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{category}</button>)}
                 </div>
               </div>
             </div>
@@ -229,6 +377,62 @@ export default function ManualOrderPage() {
         {totalQuantity > 0 && <span className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-red-500 px-1 text-xs font-black text-white">{totalQuantity}</span>}
       </button>
 
+      {customerPickerOpen && (
+        <div className="fixed inset-0 z-40 grid place-items-end bg-slate-950/40 px-3 pb-3">
+          <section className="w-full max-w-md rounded-3xl bg-white p-5 card-shadow">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-slate-400">Chọn khách</p>
+                <h2 className="mt-1 text-xl font-black text-slate-950">Danh bạ khách</h2>
+              </div>
+              <button onClick={() => setCustomerPickerOpen(false)} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-600">Đóng</button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-[1fr_120px] gap-2">
+              <input value={customerSearchText} onChange={(event) => setCustomerSearchText(event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Tên, SĐT, mã..." />
+              <select value={customerArea} onChange={(event) => setCustomerArea(event.target.value)} className="rounded-2xl border border-slate-200 px-3 py-3 text-sm font-bold outline-none focus:border-blue-700">
+                {customerAreas.map((area) => <option key={area} value={area}>{area}</option>)}
+              </select>
+            </div>
+
+            <button onClick={() => setQuickCustomerOpen((value) => !value)} className="mt-3 w-full rounded-2xl bg-blue-700 px-4 py-3 text-sm font-black text-white">{quickCustomerOpen ? "Đóng tạo nhanh" : "+ Tạo khách nhanh"}</button>
+
+            {quickCustomerOpen && (
+              <div className="mt-3 grid max-h-[42vh] gap-2 overflow-y-auto rounded-3xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                <input value={quickCustomer.name} onChange={(event) => setQuickCustomer((current) => ({ ...current, name: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Tên khách / tên quán *" />
+                <input value={quickCustomer.phone} onChange={(event) => setQuickCustomer((current) => ({ ...current, phone: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Số điện thoại *" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={quickCustomer.area} onChange={(event) => setQuickCustomer((current) => ({ ...current, area: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Khu vực" />
+                  <input value={quickCustomer.contactPerson} onChange={(event) => setQuickCustomer((current) => ({ ...current, contactPerson: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Người LH" />
+                </div>
+                <input value={quickCustomer.address} onChange={(event) => setQuickCustomer((current) => ({ ...current, address: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Địa chỉ" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={quickCustomer.ward} onChange={(event) => setQuickCustomer((current) => ({ ...current, ward: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Phường/xã" />
+                  <input value={quickCustomer.district} onChange={(event) => setQuickCustomer((current) => ({ ...current, district: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Quận/huyện" />
+                </div>
+                <button onClick={useCurrentLocation} disabled={customerLoading} className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white disabled:bg-slate-300">Lấy vị trí hiện tại</button>
+                {(quickCustomer.latitude && quickCustomer.longitude) && <p className="text-xs font-bold text-green-700">Đã lấy tọa độ: {quickCustomer.latitude}, {quickCustomer.longitude}</p>}
+                <textarea value={quickCustomer.note} onChange={(event) => setQuickCustomer((current) => ({ ...current, note: event.target.value }))} className="min-h-14 rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Ghi chú khách" />
+                <button onClick={() => void saveQuickCustomer()} disabled={customerLoading} className="rounded-2xl bg-blue-700 px-4 py-4 font-black text-white disabled:bg-slate-300">{customerLoading ? "Đang lưu..." : "Lưu và chọn khách"}</button>
+              </div>
+            )}
+
+            {customerError && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{customerError}</p>}
+
+            <div className="mt-4 max-h-[48vh] overflow-y-auto pr-1">
+              {customerLoading && !quickCustomerOpen ? <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">Đang tải khách...</p> : filteredCustomers.length === 0 ? <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">Không có khách phù hợp.</p> : filteredCustomers.map((customer) => (
+                <button key={customer.id} onClick={() => chooseCustomer(customer)} className="mb-2 w-full rounded-2xl bg-white p-3 text-left ring-1 ring-slate-100 last:mb-0">
+                  <p className="font-black text-slate-950">{customer.name}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">{customer.phone}</p>
+                  <p className="mt-1 text-xs font-bold text-blue-700">{customer.customer_code || "Chưa mã"} · {customer.area || "Chưa khu vực"}</p>
+                  {customer.address && <p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-500">{customer.address}</p>}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
       {cartOpen && (
         <div className="fixed inset-0 z-40 grid place-items-end bg-slate-950/40 px-3 pb-3">
           <section className="w-full max-w-md rounded-3xl bg-white p-5 card-shadow">
@@ -236,14 +440,13 @@ export default function ManualOrderPage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-slate-400">Đơn đang lên</p>
                 <h2 className="mt-1 text-xl font-black text-slate-950">{totalQuantity} sản phẩm</h2>
+                <p className="mt-1 text-sm font-bold text-slate-500">{customerName} · {customerPhone}</p>
               </div>
               <button onClick={() => setCartOpen(false)} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-600">Đóng</button>
             </div>
 
             <div className="mt-4 max-h-[48vh] overflow-y-auto pr-1">
-              {rows.length === 0 ? (
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Chưa có sản phẩm trong đơn.</p>
-              ) : rows.map(({ product, quantity, options }) => product && (
+              {rows.length === 0 ? <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Chưa có sản phẩm trong đơn.</p> : rows.map(({ product, quantity, options }) => product && (
                 <article key={`${product.id}-${optionLabel(options)}`} className="border-b border-slate-100 py-3 last:border-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -272,9 +475,7 @@ export default function ManualOrderPage() {
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Tổng cộng</p>
                 <p className="text-2xl font-black text-blue-700">{formatMoney(total)}</p>
               </div>
-              <button disabled={submitting || rows.length === 0} onClick={() => void createOrder()} className="rounded-2xl bg-blue-700 px-5 py-4 font-black text-white disabled:bg-slate-300">
-                {submitting ? "Đang tạo..." : "Tạo đơn"}
-              </button>
+              <button disabled={submitting || rows.length === 0} onClick={() => void createOrder()} className="rounded-2xl bg-blue-700 px-5 py-4 font-black text-white disabled:bg-slate-300">{submitting ? "Đang tạo..." : "Tạo đơn"}</button>
             </div>
           </section>
         </div>

@@ -7,6 +7,7 @@ import { fetchProductsWithFallback } from "@/lib/services/products";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type ManualOrderPayload = {
+  customerRecordId?: string;
   customerName: string;
   customerPhone: string;
   salesNote?: string;

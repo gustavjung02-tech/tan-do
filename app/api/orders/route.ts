@@ -17,6 +17,7 @@ type OrderRow = {
   id: string;
   code: string;
   customer_id?: string | null;
+  customer_record_id?: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   source: "customer" | "sales_manual";
@@ -31,6 +32,7 @@ type OrderRow = {
 type CreateOrderBody = {
   customerName?: string;
   customerPhone?: string;
+  customerRecordId?: string;
   customerNote?: string;
   salesNote?: string;
   source?: "customer" | "sales_manual";
@@ -138,12 +140,26 @@ export async function POST(request: Request) {
   const source = body.source ?? "customer";
   const clientRequestId = body.clientRequestId?.trim() || null;
   let customerId: string | null = null;
+  let customerRecordId = body.customerRecordId?.trim() || null;
   let customerName = body.customerName?.trim() || "Khách chưa đặt tên";
   let customerPhone = body.customerPhone?.trim() || "Chưa có SĐT";
 
   if (source === "sales_manual") {
     const staff = await requireStaff(request);
     if (!staff.ok) return NextResponse.json({ error: staff.message }, { status: staff.status });
+
+    if (customerRecordId) {
+      const { data: customer, error: customerError } = await supabaseAdmin
+        .from("customers")
+        .select("id,name,phone")
+        .eq("id", customerRecordId)
+        .maybeSingle();
+
+      if (customerError) return NextResponse.json({ error: customerError.message }, { status: 500 });
+      if (!customer) return NextResponse.json({ error: "Không tìm thấy khách đã chọn." }, { status: 400 });
+      customerName = customer.name || customerName;
+      customerPhone = customer.phone || customerPhone;
+    }
   } else {
     const auth = await requireAuth(request);
     if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
@@ -153,6 +169,15 @@ export async function POST(request: Request) {
 
     const existingOrder = await findExistingCustomerOrder(customerId, clientRequestId);
     if (existingOrder) return NextResponse.json({ order: existingOrder });
+  }
+
+  if (source === "sales_manual" && !customerRecordId && customerPhone) {
+    const { data: existingCustomer } = await supabaseAdmin
+      .from("customers")
+      .select("id")
+      .eq("phone", customerPhone)
+      .maybeSingle();
+    customerRecordId = existingCustomer?.id ?? null;
   }
 
   const items = body.items ?? [];
@@ -209,6 +234,7 @@ export async function POST(request: Request) {
     .insert({
       code: codeData,
       customer_id: customerId,
+      customer_record_id: customerRecordId,
       customer_name: customerName,
       customer_phone: customerPhone,
       client_request_id: source === "customer" ? clientRequestId : null,
