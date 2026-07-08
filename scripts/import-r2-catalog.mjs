@@ -63,7 +63,7 @@ const rows = activeProducts.map((product) => ({
   image_url: toImageUrl(product),
   is_active: true,
   brand: product.brand || null,
-  category: product.industry || product.subcategory || null,
+  category: product.subcategory || product.industry || null,
   source_catalog: catalog,
   source_key: product.productKey,
 }));

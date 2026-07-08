@@ -88,6 +88,8 @@ export default function SalesProductsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [categoryPanelOpen, setCategoryPanelOpen] = useState(false);
+  const [statusPanelOpen, setStatusPanelOpen] = useState(false);
 
   const activeCount = useMemo(() => products.filter((product) => product.is_active).length, [products]);
 
@@ -113,6 +115,7 @@ export default function SalesProductsPage() {
   }, [products, searchText, selectedCategory, selectedStatus]);
 
   const displayedProducts = filteredProducts.slice(0, visibleLimit);
+  const hasFilter = Boolean(searchText || selectedCategory !== ALL_CATEGORIES || selectedStatus !== "all");
 
   async function loadProducts() {
     setLoading(true);
@@ -151,6 +154,8 @@ export default function SalesProductsPage() {
     setSelectedCategory(ALL_CATEGORIES);
     setSelectedStatus("all");
     setVisibleLimit(50);
+    setCategoryPanelOpen(false);
+    setStatusPanelOpen(false);
   }
 
   async function saveProduct() {
@@ -250,73 +255,58 @@ export default function SalesProductsPage() {
           </div>
 
           <div className="mt-4 grid gap-3">
-            <label className="grid gap-1 text-sm font-semibold text-slate-700">
-              Tên sản phẩm
-              <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Ví dụ: Thạch 3Q Bibi" />
-            </label>
+            <label className="grid gap-1 text-sm font-semibold text-slate-700">Tên sản phẩm<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Ví dụ: Thạch 3Q Bibi" /></label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-sm font-semibold text-slate-700">
-                Mã sản phẩm
-                <input value={form.sku} onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" />
-              </label>
-              <label className="grid gap-1 text-sm font-semibold text-slate-700">
-                Thương hiệu
-                <input value={form.brand} onChange={(event) => setForm((current) => ({ ...current, brand: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" />
-              </label>
+              <label className="grid gap-1 text-sm font-semibold text-slate-700">Mã sản phẩm<input value={form.sku} onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" /></label>
+              <label className="grid gap-1 text-sm font-semibold text-slate-700">Thương hiệu<input value={form.brand} onChange={(event) => setForm((current) => ({ ...current, brand: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" /></label>
             </div>
-            <label className="grid gap-1 text-sm font-semibold text-slate-700">
-              Nhóm hàng
-              <input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Ví dụ: Nguyên liệu trà sữa" />
-            </label>
+            <label className="grid gap-1 text-sm font-semibold text-slate-700">Nhóm hàng<input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="Ví dụ: 3Q Gion, TRÀ CÁC LOẠI" /></label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-sm font-semibold text-slate-700">
-                Giá bán
-                <input type="number" min="0" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" />
-              </label>
-              <label className="grid gap-1 text-sm font-semibold text-slate-700">
-                Đơn vị
-                <input value={form.unit} onChange={(event) => setForm((current) => ({ ...current, unit: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="cái/thùng/gói" />
-              </label>
+              <label className="grid gap-1 text-sm font-semibold text-slate-700">Giá bán<input type="number" min="0" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" /></label>
+              <label className="grid gap-1 text-sm font-semibold text-slate-700">Đơn vị<input value={form.unit} onChange={(event) => setForm((current) => ({ ...current, unit: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="cái/thùng/gói" /></label>
             </div>
-            <label className="grid gap-1 text-sm font-semibold text-slate-700">
-              Link ảnh
-              <input value={form.imageUrl} onChange={(event) => setForm((current) => ({ ...current, imageUrl: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="https://..." />
-            </label>
-            <label className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 ring-1 ring-slate-100">
-              Còn bán
-              <input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} className="h-5 w-5" />
-            </label>
+            <label className="grid gap-1 text-sm font-semibold text-slate-700">Link ảnh<input value={form.imageUrl} onChange={(event) => setForm((current) => ({ ...current, imageUrl: event.target.value }))} className="rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-700" placeholder="https://..." /></label>
+            <label className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 ring-1 ring-slate-100">Còn bán<input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} className="h-5 w-5" /></label>
           </div>
 
           {message && <p className="mt-4 rounded-xl bg-green-50 px-4 py-3 text-sm font-bold text-green-700 ring-1 ring-green-100">{message}</p>}
           {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">{error}</p>}
 
-          <button disabled={saving} onClick={() => void saveProduct()} className="mt-5 w-full rounded-xl bg-blue-700 py-4 font-black text-white disabled:bg-slate-300">
-            {saving ? "Đang lưu..." : editingId ? "Cập nhật sản phẩm" : "Thêm sản phẩm"}
-          </button>
+          <button disabled={saving} onClick={() => void saveProduct()} className="mt-5 w-full rounded-xl bg-blue-700 py-4 font-black text-white disabled:bg-slate-300">{saving ? "Đang lưu..." : editingId ? "Cập nhật sản phẩm" : "Thêm sản phẩm"}</button>
         </section>
 
         <section className="mt-6 rounded-2xl bg-white p-4 card-shadow ring-1 ring-slate-100">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-black text-slate-950">Tìm và lọc</h2>
-            {(searchText || selectedCategory !== ALL_CATEGORIES || selectedStatus !== "all") && <button onClick={clearFilters} className="text-sm font-black text-blue-700">Xóa lọc</button>}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-black text-slate-950">Tìm và lọc</h2>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Đang hiển thị {filteredProducts.length}/{products.length} sản phẩm</p>
+              <p className="mt-1 text-xs font-bold text-blue-700">Nhóm: {selectedCategory} · Trạng thái: {selectedStatus === "all" ? "Tất cả" : selectedStatus === "active" ? "Còn bán" : "Tạm ẩn"}</p>
+            </div>
+            {hasFilter && <button onClick={clearFilters} className="text-sm font-black text-blue-700">Xóa lọc</button>}
           </div>
+
           <input value={searchText} onChange={(event) => { setSearchText(event.target.value); setVisibleLimit(50); }} className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-700" placeholder="Tìm tên, mã, thương hiệu..." />
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {categories.map((category) => (
-              <button key={category} onClick={() => { setSelectedCategory(category); setVisibleLimit(50); }} className={selectedCategory === category ? "whitespace-nowrap rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white" : "whitespace-nowrap rounded-lg bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200"}>{category}</button>
-            ))}
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button onClick={() => { setCategoryPanelOpen((value) => !value); setStatusPanelOpen(false); }} className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-black text-white">{categoryPanelOpen ? "Đóng nhóm" : "Nhóm hàng"}</button>
+            <button onClick={() => { setStatusPanelOpen((value) => !value); setCategoryPanelOpen(false); }} className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">{statusPanelOpen ? "Đóng trạng thái" : "Trạng thái"}</button>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {[
-              ["all", "Tất cả"],
-              ["active", "Còn bán"],
-              ["hidden", "Tạm ẩn"],
-            ].map(([value, label]) => (
-              <button key={value} onClick={() => { setSelectedStatus(value as "all" | "active" | "hidden"); setVisibleLimit(50); }} className={selectedStatus === value ? "rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white" : "rounded-lg bg-slate-50 px-3 py-2 text-sm font-bold text-slate-600 ring-1 ring-slate-200"}>{label}</button>
-            ))}
-          </div>
-          <p className="mt-3 text-xs font-semibold text-slate-500">Đang hiển thị {filteredProducts.length}/{products.length} sản phẩm</p>
+
+          {categoryPanelOpen && (
+            <div className="mt-3 grid max-h-80 grid-cols-2 gap-2 overflow-y-auto rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
+              {categories.map((category) => (
+                <button key={category} onClick={() => { setSelectedCategory(category); setVisibleLimit(50); setCategoryPanelOpen(false); }} className={selectedCategory === category ? "rounded-xl bg-blue-700 px-3 py-3 text-left text-sm font-black text-white" : "rounded-xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{category}</button>
+              ))}
+            </div>
+          )}
+
+          {statusPanelOpen && (
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
+              {[["all", "Tất cả"], ["active", "Còn bán"], ["hidden", "Tạm ẩn"]].map(([value, label]) => (
+                <button key={value} onClick={() => { setSelectedStatus(value as "all" | "active" | "hidden"); setVisibleLimit(50); setStatusPanelOpen(false); }} className={selectedStatus === value ? "rounded-xl bg-slate-950 px-3 py-3 text-sm font-black text-white" : "rounded-xl bg-white px-3 py-3 text-sm font-bold text-slate-700 ring-1 ring-slate-100"}>{label}</button>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="mt-6">
@@ -326,18 +316,10 @@ export default function SalesProductsPage() {
           </div>
 
           <div className="mt-3 grid gap-3">
-            {loading ? (
-              <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Đang tải sản phẩm...</p>
-            ) : filteredProducts.length === 0 ? (
-              <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Không có sản phẩm phù hợp.</p>
-            ) : displayedProducts.map((product) => (
+            {loading ? <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Đang tải sản phẩm...</p> : filteredProducts.length === 0 ? <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">Không có sản phẩm phù hợp.</p> : displayedProducts.map((product) => (
               <article key={product.id} className="rounded-2xl bg-white p-3 card-shadow ring-1 ring-slate-100">
                 <div className="grid grid-cols-[58px_1fr] gap-3">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="h-16 w-14 rounded-xl object-cover" loading="lazy" />
-                  ) : (
-                    <div className="grid h-16 w-14 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>
-                  )}
+                  {product.image_url ? <img src={product.image_url} alt={product.name} className="h-16 w-14 rounded-xl object-cover" loading="lazy" /> : <div className="grid h-16 w-14 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>}
                   <div className="min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -345,26 +327,18 @@ export default function SalesProductsPage() {
                         <p className="mt-1 truncate text-xs text-slate-500">{product.category || "Chưa phân nhóm"}</p>
                         <p className="mt-1 text-xs text-slate-400">{product.sku || "Chưa có mã"} · {product.unit}</p>
                       </div>
-                      <span className={product.is_active ? "rounded-lg bg-green-50 px-2 py-1 text-xs font-black text-green-700" : "rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-500"}>
-                        {product.is_active ? "Còn bán" : "Tạm ẩn"}
-                      </span>
+                      <span className={product.is_active ? "rounded-lg bg-green-50 px-2 py-1 text-xs font-black text-green-700" : "rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-500"}>{product.is_active ? "Còn bán" : "Tạm ẩn"}</span>
                     </div>
                     <p className="mt-2 font-black text-blue-700">{formatMoney(Number(product.price))}</p>
                   </div>
                 </div>
                 <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
                   <button onClick={() => startEdit(product)} className="flex-1 rounded-xl bg-blue-50 px-3 py-2 text-sm font-black text-blue-700">Sửa</button>
-                  <button onClick={() => void toggleActive(product)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-700">
-                    {product.is_active ? "Tạm ẩn" : "Bật bán"}
-                  </button>
+                  <button onClick={() => void toggleActive(product)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-700">{product.is_active ? "Tạm ẩn" : "Bật bán"}</button>
                 </div>
               </article>
             ))}
-            {visibleLimit < filteredProducts.length && (
-              <button onClick={() => setVisibleLimit((current) => current + 50)} className="rounded-2xl bg-white px-4 py-4 font-black text-blue-700 ring-1 ring-blue-100">
-                Xem thêm sản phẩm
-              </button>
-            )}
+            {visibleLimit < filteredProducts.length && <button onClick={() => setVisibleLimit((current) => current + 50)} className="rounded-2xl bg-white px-4 py-4 font-black text-blue-700 ring-1 ring-blue-100">Xem thêm sản phẩm</button>}
           </div>
         </section>
       </section>

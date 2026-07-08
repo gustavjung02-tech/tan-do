@@ -9,10 +9,11 @@ import { formatMoney } from "@/lib/utils";
 const ALL_CATEGORIES = "Tất cả";
 
 export default function CustomerPage() {
-  const { products, productSource, productLoadError, addToCart, cartCount } = useAppStore();
+  const { products, productLoadError, addToCart, cartCount } = useAppStore();
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [visibleLimit, setVisibleLimit] = useState(40);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const categories = useMemo(() => {
     const values = products
@@ -35,11 +36,13 @@ export default function CustomerPage() {
   }, [products, searchText, selectedCategory]);
 
   const displayedProducts = filteredProducts.slice(0, visibleLimit);
+  const hasFilter = Boolean(searchText || selectedCategory !== ALL_CATEGORIES);
 
   function clearFilters() {
     setSearchText("");
     setSelectedCategory(ALL_CATEGORIES);
     setVisibleLimit(40);
+    setFilterOpen(false);
   }
 
   return (
@@ -86,30 +89,41 @@ export default function CustomerPage() {
           </label>
         </section>
 
-        <section className="mt-5">
-          <div className="flex items-end justify-between gap-3">
+        <section className="mt-5 rounded-2xl bg-white p-4 card-shadow ring-1 ring-slate-100">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-black text-slate-950">Nhóm hàng</h2>
+              <h2 className="text-base font-black text-slate-950">Lọc sản phẩm</h2>
               <p className="mt-1 text-xs font-semibold text-slate-500">Đang hiển thị {filteredProducts.length}/{products.length} sản phẩm</p>
+              <p className="mt-1 text-xs font-bold text-emerald-700">Nhóm: {selectedCategory}</p>
             </div>
-            {(searchText || selectedCategory !== ALL_CATEGORIES) && (
-              <button onClick={clearFilters} className="text-xs font-black text-emerald-700">Xóa lọc</button>
-            )}
+            {hasFilter && <button onClick={clearFilters} className="text-xs font-black text-emerald-700">Xóa lọc</button>}
           </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {categories.map((category) => {
-              const active = selectedCategory === category;
-              return (
-                <button
-                  key={category}
-                  onClick={() => { setSelectedCategory(category); setVisibleLimit(40); }}
-                  className={active ? "whitespace-nowrap rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white" : "whitespace-nowrap rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200"}
-                >
-                  {category}
-                </button>
-              );
-            })}
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button onClick={() => setFilterOpen((value) => !value)} className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white">
+              {filterOpen ? "Đóng nhóm" : "Chọn nhóm"}
+            </button>
+            <button onClick={() => { setSelectedCategory(ALL_CATEGORIES); setVisibleLimit(40); }} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">
+              Tất cả
+            </button>
           </div>
+
+          {filterOpen && (
+            <div className="mt-3 grid max-h-80 grid-cols-2 gap-2 overflow-y-auto rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
+              {categories.map((category) => {
+                const active = selectedCategory === category;
+                return (
+                  <button
+                    key={category}
+                    onClick={() => { setSelectedCategory(category); setVisibleLimit(40); setFilterOpen(false); }}
+                    className={active ? "rounded-xl bg-emerald-700 px-3 py-3 text-left text-sm font-black text-white" : "rounded-xl bg-white px-3 py-3 text-left text-sm font-bold text-slate-700 ring-1 ring-slate-100"}
+                  >
+                    {category}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {productLoadError && (
