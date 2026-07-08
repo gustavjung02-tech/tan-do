@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallAppButton } from "@/components/ui/install-app-button";
 import Link from "next/link";
 import { CustomerBottomNav } from "@/components/layout/customer-bottom-nav";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -30,7 +31,8 @@ export default function CustomerAccountPage() {
 
           <Link href="/customer/orders" className="mt-5 block rounded-2xl bg-emerald-700 px-4 py-4 text-center font-black text-white">Xem đơn hàng của tôi</Link>
           <button onClick={() => void signOut()} className="mt-3 w-full rounded-2xl bg-slate-100 px-4 py-4 font-black text-slate-700">Đăng xuất</button>
-        </section>
+        <InstallAppButton />
+      </section>
       </section>
 
       <CustomerBottomNav />

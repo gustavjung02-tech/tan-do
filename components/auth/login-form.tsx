@@ -46,6 +46,18 @@ export function LoginForm() {
     }
   }
 
+  async function loginWithGoogle() {
+    setLoading(true);
+    setError(null);
+    if (!supabaseBrowser) return;
+    const { error } = await supabaseBrowser.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) setError(error.message);
+    setLoading(false);
+  }
+
   async function login() {
     setLoading(true);
     setError(null);

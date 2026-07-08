@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallAppButton } from "@/components/ui/install-app-button";
 import { SalesBottomNav } from "@/components/layout/sales-bottom-nav";
 import { useAuth } from "@/components/auth/auth-provider";
 
@@ -23,7 +24,8 @@ export default function SalesAccountPage() {
           </div>
           <p className="mt-5 text-sm font-semibold leading-6 text-slate-600">Sales/admin có quyền xem toàn bộ đơn, tạo đơn tay, xử lý trạng thái và xuất báo cáo.</p>
           <button onClick={() => void signOut()} className="mt-5 w-full rounded-2xl bg-slate-100 px-4 py-4 font-black text-slate-700">Đăng xuất</button>
-        </section>
+        <InstallAppButton />
+      </section>
       </section>
       <SalesBottomNav />
     </main>
