@@ -1,0 +1,25 @@
+{
+  "name": "Tân Đô F&B",
+  "short_name": "Tân Đô",
+  "description": "PWA đặt hàng nhanh cho khách và sales.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#b91c1c",
+  "theme_color": "#b91c1c",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

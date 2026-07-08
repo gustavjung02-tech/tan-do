@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --app-blue: #0757c9;
+  --app-blue-dark: #06459e;
+  --app-bg: #f6f8fc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: #101828;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.phone-page {
+  min-height: 100vh;
+  background: #f6f8fc;
+}
+
+.card-shadow {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}

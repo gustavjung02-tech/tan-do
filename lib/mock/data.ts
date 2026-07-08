@@ -1,0 +1,92 @@
+import type { Order, Product } from "./types";
+
+export const mockProducts: Product[] = [
+  {
+    id: "p-001",
+    name: "Gạo thơm Tân Đô 5kg",
+    sku: "TD-GAO-5KG",
+    price: 92000,
+    unit: "túi",
+    imageUrl: "https://images.unsplash.com/photo-1586201375761-83865001e31c?q=80&w=900&auto=format&fit=crop",
+    isActive: true,
+  },
+  {
+    id: "p-002",
+    name: "Nước mắm cá cơm 500ml",
+    sku: "TD-NM-500",
+    price: 38000,
+    unit: "chai",
+    imageUrl: "https://images.unsplash.com/photo-1608686207856-001b95cf60ca?q=80&w=900&auto=format&fit=crop",
+    isActive: true,
+  },
+  {
+    id: "p-003",
+    name: "Dầu ăn thực vật 1L",
+    sku: "TD-DAU-1L",
+    price: 52000,
+    unit: "chai",
+    imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?q=80&w=900&auto=format&fit=crop",
+    isActive: true,
+  },
+  {
+    id: "p-004",
+    name: "Đường tinh luyện 1kg",
+    sku: "TD-DUONG-1KG",
+    price: 26000,
+    unit: "gói",
+    imageUrl: "https://images.unsplash.com/photo-1581441363689-1f3c3c414635?q=80&w=900&auto=format&fit=crop",
+    isActive: true,
+  },
+  {
+    id: "p-005",
+    name: "Bột ngọt 400g",
+    sku: "TD-BN-400",
+    price: 34000,
+    unit: "gói",
+    imageUrl: "https://images.unsplash.com/photo-1627485937980-221c88ac04f9?q=80&w=900&auto=format&fit=crop",
+    isActive: true,
+  },
+  {
+    id: "p-006",
+    name: "Mì gói thùng 30 gói",
+    sku: "TD-MI-30",
+    price: 118000,
+    unit: "thùng",
+    imageUrl: "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?q=80&w=900&auto=format&fit=crop",
+    isActive: true,
+  },
+];
+
+export const initialOrders: Order[] = [
+  {
+    id: "o-001",
+    code: "TD-000001",
+    customerName: "Anh Minh - Quán cơm 68",
+    customerPhone: "0900000001",
+    source: "customer",
+    status: "new",
+    customerNote: "Giao trước 10h sáng nếu được.",
+    total: 248000,
+    createdAt: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
+    items: [
+      { id: "oi-001", productId: "p-001", productName: "Gạo thơm Tân Đô 5kg", unitPrice: 92000, quantity: 2, lineTotal: 184000 },
+      { id: "oi-002", productId: "p-004", productName: "Đường tinh luyện 1kg", unitPrice: 26000, quantity: 1, lineTotal: 26000 },
+      { id: "oi-003", productId: "p-002", productName: "Nước mắm cá cơm 500ml", unitPrice: 38000, quantity: 1, lineTotal: 38000 },
+    ],
+  },
+  {
+    id: "o-002",
+    code: "TD-000002",
+    customerName: "Chị Lan - Tạp hóa Lan Anh",
+    customerPhone: "0900000002",
+    source: "sales_manual",
+    status: "confirmed",
+    salesName: "Sales demo",
+    salesNote: "Đơn sales lên tay để test flow.",
+    total: 236000,
+    createdAt: new Date(Date.now() - 1000 * 60 * 75).toISOString(),
+    items: [
+      { id: "oi-004", productId: "p-006", productName: "Mì gói thùng 30 gói", unitPrice: 118000, quantity: 2, lineTotal: 236000 },
+    ],
+  },
+];
