@@ -24,6 +24,8 @@ export function ProductOptionPicker({ product, onClose, onConfirm }: {
   const groups = product.optionGroups ?? [];
   const initialOptions = useMemo(() => Object.fromEntries(groups.map((group) => [group.name, group.values[0] ?? ""])), [groups]);
   const [options, setOptions] = useState<SelectedProductOptions>(initialOptions);
+  const selectedVariant = product.variants?.find((variant) => Object.entries(variant.options).every(([key, value]) => options[key] === value));
+  const displayPrice = selectedVariant?.price ?? product.price;
 
   useEffect(() => {
     setOptions(initialOptions);
@@ -36,7 +38,7 @@ export function ProductOptionPicker({ product, onClose, onConfirm }: {
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Chọn biến thể</p>
             <h2 className="mt-1 text-lg font-black text-slate-950">{product.name}</h2>
-            <p className="mt-1 text-sm font-black text-emerald-700">{formatMoney(product.price)}</p>
+            <p className="mt-1 text-sm font-black text-emerald-700">{formatMoney(displayPrice)}</p>
           </div>
           <button onClick={onClose} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-600">Đóng</button>
         </div>

@@ -1,3 +1,11 @@
+export type ProductVariant = {
+  id?: string;
+  variantKey: string;
+  sku?: string;
+  options: SelectedProductOptions;
+  price: number;
+};
+
 export type ProductOptionGroup = {
   name: string;
   values: string[];
@@ -21,6 +29,7 @@ export type Product = {
   priceLabel?: string;
   optionGroups?: ProductOptionGroup[];
   variantKeys?: string[];
+  variants?: ProductVariant[];
 };
 
 export type CartItem = {

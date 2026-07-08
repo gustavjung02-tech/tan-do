@@ -119,6 +119,22 @@ const rows = activeProducts.map((product) => ({
 }));
 
 const missingImage = rows.filter((row) => !row.image_url).length;
+const variantRows = [];
+for (const row of rows) {
+  const source = activeProducts.find((product) => product.productKey === row.source_key);
+  const variants = source?.variants ?? [];
+  for (const variant of variants) {
+    variantRows.push({
+      product_source_key: row.source_key,
+      variant_key: variant.variantKey ?? `${row.source_key}-default`,
+      sku: variant.sku ?? null,
+      options: variant.options ?? {},
+      price: toMoney(variant.price),
+      image_key: variant.imageKey ?? null,
+    });
+  }
+}
+
 const chunkSize = 50;
 let imported = 0;
 
@@ -130,6 +146,32 @@ for (let index = 0; index < rows.length; index += chunkSize) {
 
   if (error) throw error;
   imported += chunk.length;
+}
+
+if (variantRows.length) {
+  const { data: productMap, error: mapError } = await supabase
+    .from("products")
+    .select("id,source_key")
+    .eq("source_catalog", catalog);
+  if (mapError) throw mapError;
+
+  const ids = new Map((productMap ?? []).map((item) => [item.source_key, item.id]));
+  const rowsWithIds = variantRows.map((variant) => ({
+    product_id: ids.get(variant.product_source_key),
+    variant_key: variant.variant_key,
+    sku: variant.sku,
+    options: variant.options,
+    price: variant.price,
+    image_key: variant.image_key,
+  })).filter((variant) => variant.product_id);
+
+  for (let index = 0; index < rowsWithIds.length; index += chunkSize) {
+    const chunk = rowsWithIds.slice(index, index + chunkSize);
+    const { error } = await supabase
+      .from("product_variants")
+      .upsert(chunk, { onConflict: "product_id,variant_key" });
+    if (error) throw error;
+  }
 }
 
 const { error: hideOldError, count: hiddenOldCount } = await supabase

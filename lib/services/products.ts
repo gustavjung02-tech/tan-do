@@ -1,5 +1,5 @@
 import { mockProducts } from "@/lib/mock/data";
-import type { Product, ProductOptionGroup } from "@/lib/mock/types";
+import type { Product, ProductOptionGroup, ProductVariant } from "@/lib/mock/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { ProductRow } from "@/lib/supabase/types";
 
@@ -30,6 +30,7 @@ function mapProduct(row: ProductRow): Product {
     priceLabel: row.price_label ?? undefined,
     optionGroups: parseOptionGroups(row.option_groups),
     variantKeys: row.variant_keys ?? [],
+    variants: [],
   };
 }
 
@@ -49,5 +50,30 @@ export async function fetchProductsWithFallback(): Promise<{ products: Product[]
     return { products: mockProducts, source: "mock", error: error?.message ?? "No products returned." };
   }
 
-  return { products: data.map((row) => mapProduct(row as ProductRow)), source: "supabase" };
+  const products = data.map((row) => mapProduct(row as ProductRow));
+  const productIds = products.map((product) => product.id);
+  if (productIds.length) {
+    const { data: variants } = await supabaseBrowser
+      .from("product_variants")
+      .select("id,product_id,variant_key,sku,options,price")
+      .in("product_id", productIds);
+
+    const variantMap = new Map<string, ProductVariant[]>();
+    for (const variant of variants ?? []) {
+      const current = variantMap.get(variant.product_id) ?? [];
+      current.push({
+        id: variant.id,
+        variantKey: variant.variant_key,
+        sku: variant.sku ?? undefined,
+        options: (variant.options ?? {}) as Record<string, string>,
+        price: Number(variant.price),
+      });
+      variantMap.set(variant.product_id, current);
+    }
+    for (const product of products) {
+      product.variants = variantMap.get(product.id) ?? [];
+    }
+  }
+
+  return { products, source: "supabase" };
 }

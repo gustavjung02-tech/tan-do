@@ -75,6 +75,11 @@ export function formatProductWithOptions(productName: string, options?: Selected
   return `${productName} — ${suffix}`;
 }
 
+function resolveProductPrice(product: Product, options?: SelectedProductOptions) {
+  const variant = product.variants?.find((item) => Object.entries(item.options).every(([key, value]) => options?.[key] === value));
+  return variant?.price ?? product.price;
+}
+
 function toOrderItems(products: Product[], items: CartItem[], timestamp = Date.now()): Order["items"] {
   return items
     .map((item, index) => {
@@ -85,9 +90,9 @@ function toOrderItems(products: Product[], items: CartItem[], timestamp = Date.n
         id: `oi-${timestamp}-${index}`,
         productId: product.id,
         productName: formatProductWithOptions(product.name, item.options),
-        unitPrice: product.price,
+        unitPrice: resolveProductPrice(product, item.options),
         quantity: item.quantity,
-        lineTotal: product.price * item.quantity,
+        lineTotal: resolveProductPrice(product, item.options) * item.quantity,
       };
     })
     .filter(Boolean) as Order["items"];
@@ -161,7 +166,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => {
     const product = products.find((entry) => entry.id === item.productId);
-    return sum + (product?.price ?? 0) * item.quantity;
+    return sum + (product ? resolveProductPrice(product, item.options) : 0) * item.quantity;
   }, 0);
 
   const value = useMemo<AppStore>(() => ({
