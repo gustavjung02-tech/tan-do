@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CustomerBottomNav } from "@/components/layout/customer-bottom-nav";
 import { ProductVariantList } from "@/components/ui/product-variant-list";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import type { Product } from "@/lib/mock/types";
 import { ALL_CATEGORIES, ALL_FAMILIES, categoryList, familyList, getProductFamily, productMatchesTaxonomy } from "@/lib/services/product-taxonomy";
 import { useAppStore } from "@/lib/store/app-store";
@@ -57,6 +58,7 @@ export default function CustomerPage() {
             <img src="/icons/tando-logo.png" alt="Tân Đô F&B" className="h-12 w-12 rounded-2xl object-cover shadow-sm" />
             <span className="text-xl font-black text-slate-950">Tân Đô</span>
           </Link>
+          <NotificationBell />
           <Link href="/customer/cart" className="relative text-2xl leading-none text-slate-900" aria-label="Giỏ hàng">
             🛒
             {cartCount > 0 && <span className="absolute -right-3 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[11px] font-black text-white">{cartCount}</span>}

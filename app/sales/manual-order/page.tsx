@@ -1,5 +1,6 @@
 "use client";
 
+import { ProductVariantList } from "@/components/ui/product-variant-list";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SalesBottomNav } from "@/components/layout/sales-bottom-nav";
@@ -204,12 +205,12 @@ export default function ManualOrderPage() {
     return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
   }
 
-  function addProduct(productId: string, options?: SelectedProductOptions) {
+  function addProduct(productId: string, options?: SelectedProductOptions, variant?: any) {
     setManualItems((current) => {
       const exists = current.find((item) => item.productId === productId && sameOptions(item.options, options));
       if (!exists) {
         const product = products.find((item) => item.id === productId);
-        return product ? [...current, { productId, quantity: 1, options, sku: product.sku, unitPrice: product.price }] : current;
+        return product ? [...current, { productId, quantity: 1, options: variant?.options ?? options, variantId: variant?.id, sku: variant?.sku ?? product.sku, unitPrice: Number(variant?.price ?? product.price) }] : current;
       }
       return current.map((item) => item.productId === productId && sameOptions(item.options, options) ? { ...item, quantity: item.quantity + 1 } : item);
     });
