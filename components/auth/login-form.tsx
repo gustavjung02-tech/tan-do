@@ -56,7 +56,7 @@ export function LoginForm() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" className="rounded-xl border px-4 py-3" />
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="M?t kh?u" className="rounded-xl border px-4 py-3" />
           {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-          {tab === "customer" && <button onClick={loginWithGoogle} className="rounded-2xl border px-4 py-3 font-black">?? Ti?p t?c v?i Google</button>}
+          {tab === "customer" && <button onClick={loginWithGoogle} className="rounded-2xl border px-4 py-3 font-black">Ti?p t?c v?i Google</button>}
           <button disabled={loading} onClick={login} className="rounded-2xl bg-emerald-700 px-4 py-3 font-black text-white">{loading ? "?ang x? l?..." : "??ng nh?p"}</button>
         </div>
         <InstallAppButton />
