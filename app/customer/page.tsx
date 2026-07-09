@@ -120,7 +120,7 @@ export default function CustomerPage() {
               <div className="min-w-0">
                 <h3 className="truncate text-base font-black text-slate-950">{product.name}</h3>
                 <p className="mt-1 truncate text-sm text-slate-500">{getProductFamily(product)} · {product.category || "Chưa phân nhóm"}</p>
-                <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p><ProductVariantList product={product} onAdd={(variant)=>addToCart(product.id,variant)} />
+                {product.variants?.length ? <ProductVariantList product={product} onAdd={(variant)=>addToCart(product.id,variant)} /> : <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p>}
               </div>
               <button onClick={() => handleAdd(product)} className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-700 text-2xl font-semibold leading-none text-white shadow-sm" aria-label={`Thêm ${product.name} vào giỏ`}>+</button>
             </article>
