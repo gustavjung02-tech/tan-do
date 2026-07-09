@@ -32,7 +32,10 @@ export default function CustomerPage() {
         || product.brand?.toLowerCase().includes(keyword)
         || product.category?.toLowerCase().includes(keyword)
         || getProductFamily(product).toLowerCase().includes(keyword)
-        || product.optionGroups?.some((group) => group.values.some((value) => value.toLowerCase().includes(keyword)));
+        || product.optionGroups?.some((group) => group.values.some((value) => value.toLowerCase().includes(keyword)))
+        || product.variants?.some((variant) => variant.variantKey.toLowerCase().includes(keyword)
+          || variant.sku?.toLowerCase().includes(keyword)
+          || Object.values(variant.options ?? {}).some((value) => String(value).toLowerCase().includes(keyword)));
       return matchCategory && matchKeyword;
     });
   }, [products, searchText, selectedFamily, selectedCategory]);

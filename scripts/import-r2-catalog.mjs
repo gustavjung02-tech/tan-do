@@ -96,8 +96,10 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 const products = await fetchJson("catalog/hung-phat/v2/manifests/products.json");
+const productVariants = await fetchJson("catalog/hung-phat/v2/manifests/product-variants.json").catch(() => []);
 const productList = Array.isArray(products) ? products : Object.values(products);
 const activeProducts = productList.filter((product) => product.status === "active");
+const activeVariants = (Array.isArray(productVariants) ? productVariants : Object.values(productVariants)).filter((variant) => variant.status === "active");
 
 const rows = activeProducts.map((product) => ({
   name: product.name,
@@ -120,19 +122,16 @@ const rows = activeProducts.map((product) => ({
 
 const missingImage = rows.filter((row) => !row.image_url).length;
 const variantRows = [];
-for (const row of rows) {
-  const source = activeProducts.find((product) => product.productKey === row.source_key);
-  const variants = source?.variants ?? [];
-  for (const variant of variants) {
-    variantRows.push({
-      product_source_key: row.source_key,
-      variant_key: variant.variantKey ?? `${row.source_key}-default`,
-      sku: variant.sku ?? null,
-      options: variant.options ?? {},
-      price: toMoney(variant.price),
-      image_key: variant.imageKey ?? null,
-    });
-  }
+for (const variant of activeVariants) {
+  if (!variant.parentKey || !variant.variantKey) continue;
+  variantRows.push({
+    product_source_key: variant.parentKey,
+    variant_key: variant.variantKey,
+    sku: variant.sku ?? null,
+    options: variant.options ?? {},
+    price: toMoney(variant.shopPrice ?? variant.price),
+    image_key: variant.imageKey ?? null,
+  });
 }
 
 const chunkSize = 50;
@@ -172,6 +171,22 @@ if (variantRows.length) {
       .upsert(chunk, { onConflict: "product_id,variant_key" });
     if (error) throw error;
   }
+
+  const expectedByProduct = new Map();
+  for (const row of rowsWithIds) {
+    const current = expectedByProduct.get(row.product_id) ?? [];
+    current.push(row.variant_key);
+    expectedByProduct.set(row.product_id, current);
+  }
+
+  for (const [productId, expectedKeys] of expectedByProduct.entries()) {
+    const { error } = await supabase
+      .from("product_variants")
+      .delete()
+      .eq("product_id", productId)
+      .not("variant_key", "in", `(${expectedKeys.map((key) => `"${String(key).replace(/"/g, '\"')}"`).join(",")})`);
+    if (error) throw error;
+  }
 }
 
 const { error: hideOldError, count: hiddenOldCount } = await supabase
@@ -194,6 +209,7 @@ console.log(JSON.stringify({
   imported,
   activeCount,
   missingImage,
+  variantCount: variantRows.length,
   hiddenOldCount: hiddenOldCount ?? 0,
   catalog,
 }, null, 2));
