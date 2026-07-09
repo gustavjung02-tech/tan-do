@@ -28,7 +28,16 @@ export default function AuthCallbackPage() {
           }),
         });
       }
-      router.replace("/customer");
+      const session = data.session;
+      if (!session) { router.replace("/login"); return; }
+      const profileResponse = await fetch("/api/customer/profile", { headers: { Authorization: `Bearer ${session.access_token}` } });
+      const profileData = await profileResponse.json().catch(() => ({}));
+      const customer = profileData.customer;
+      if (!customer?.name || !customer?.phone || !customer?.address) {
+        router.replace("/customer/setup");
+      } else {
+        router.replace("/customer");
+      }
     }
     void finish();
   }, [router]);

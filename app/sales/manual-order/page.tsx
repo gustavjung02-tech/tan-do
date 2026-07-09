@@ -207,7 +207,10 @@ export default function ManualOrderPage() {
   function addProduct(productId: string, options?: SelectedProductOptions) {
     setManualItems((current) => {
       const exists = current.find((item) => item.productId === productId && sameOptions(item.options, options));
-      if (!exists) return [...current, { productId, quantity: 1, options }];
+      if (!exists) {
+        const product = products.find((item) => item.id === productId);
+        return product ? [...current, { productId, quantity: 1, options, sku: product.sku, unitPrice: product.price }] : current;
+      }
       return current.map((item) => item.productId === productId && sameOptions(item.options, options) ? { ...item, quantity: item.quantity + 1 } : item);
     });
     setCreatedCode(null);

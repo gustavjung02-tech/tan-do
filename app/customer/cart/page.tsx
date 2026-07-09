@@ -82,7 +82,7 @@ export default function CartPage() {
               <p className="font-semibold text-slate-600">Giỏ hàng đang trống.</p>
               <Link href="/customer" className="mt-4 inline-block rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white">Chọn sản phẩm</Link>
             </div>
-          ) : items.map(({ product, quantity, options }) => product && (
+          ) : items.map((item) => { const { product, quantity, options } = item; return product && (
             <article key={`${product.id}-${optionLabel(options)}`} className="grid grid-cols-[62px_1fr] gap-3 border-b border-slate-100 bg-white py-3">
               {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-16 w-12 rounded-lg object-cover" /> : <div className="grid h-16 w-12 place-items-center rounded-lg bg-slate-100 text-xs font-bold text-slate-400">Ảnh</div>}
               <div className="min-w-0">
@@ -90,7 +90,7 @@ export default function CartPage() {
                   <div>
                     <h3 className="line-clamp-2 font-bold text-slate-950">{product.name}</h3>
                     {optionLabel(options) && <p className="mt-1 text-xs font-bold text-amber-700">{optionLabel(options)}</p>}
-                    <p className="mt-1 text-sm font-black text-emerald-700">{formatMoney(product.price)}</p>
+                    <p className="mt-1 text-sm font-black text-emerald-700">{formatMoney(item.unitPrice)}</p>
                   </div>
                   <button disabled={submitting} onClick={() => removeCartItem(product.id, options)} className="text-sm font-black text-slate-400 disabled:opacity-40">Xóa</button>
                 </div>
@@ -100,11 +100,11 @@ export default function CartPage() {
                     <span className="w-9 text-center text-sm font-black">{quantity}</span>
                     <button disabled={submitting} onClick={() => addToCart(product.id, options)} className="h-8 w-9 text-lg disabled:opacity-40">+</button>
                   </div>
-                  <p className="text-sm font-black text-slate-950">{formatMoney(product.price * quantity)}</p>
+                  <p className="text-sm font-black text-slate-950">{formatMoney(item.unitPrice * quantity)}</p>
                 </div>
               </div>
             </article>
-          ))}
+          ); })}
         </section>
 
         {items.length > 0 && (

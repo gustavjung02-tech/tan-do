@@ -11,6 +11,9 @@ type OrderItemRow = {
   unit_price: number | string;
   quantity: number | string;
   line_total: number | string;
+  variant_id?: string | null;
+  sku?: string | null;
+  options?: Record<string,string> | null;
 };
 
 type OrderRow = {
@@ -63,6 +66,9 @@ function mapOrder(row: OrderRow): Order {
     unitPrice: Number(item.unit_price),
     quantity: Number(item.quantity),
     lineTotal: Number(item.line_total),
+    variantId: item.variant_id ?? undefined,
+    sku: item.sku ?? undefined,
+    options: item.options ?? undefined,
   }));
 
   return {
@@ -189,7 +195,7 @@ export async function POST(request: Request) {
   const productIds = items.map((item) => item.productId);
   const { data: products, error: productsError } = await supabaseAdmin
     .from("products")
-    .select("id,name,price,option_groups")
+    .select("id,name,sku,price,option_groups")
     .in("id", productIds);
 
   if (productsError) {
@@ -199,11 +205,14 @@ export async function POST(request: Request) {
   const orderItems = items.map((item) => {
     const product = products?.find((entry) => entry.id === item.productId);
     if (!product) return null;
-    const unitPrice = Number(product.price);
+    const unitPrice = Number(item.unitPrice ?? product.price);
     const quantity = item.quantity;
     return {
       product_id: product.id,
       product_name: formatProductNameWithOptions(product.name, item.options),
+      variant_id: item.variantId ?? null,
+      sku: item.sku ?? product.sku ?? null,
+      options: item.options ?? null,
       unit_price: unitPrice,
       quantity,
       line_total: unitPrice * quantity,

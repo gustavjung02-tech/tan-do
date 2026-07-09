@@ -1,3 +1,5 @@
+export type SelectedProductOptions = Record<string, string>;
+
 export type ProductVariant = {
   id?: string;
   variantKey: string;
@@ -10,8 +12,6 @@ export type ProductOptionGroup = {
   name: string;
   values: string[];
 };
-
-export type SelectedProductOptions = Record<string, string>;
 
 export type Product = {
   id: string;
@@ -34,8 +34,11 @@ export type Product = {
 
 export type CartItem = {
   productId: string;
-  quantity: number;
+  variantId?: string;
+  sku?: string;
   options?: SelectedProductOptions;
+  quantity: number;
+  unitPrice: number;
 };
 
 export type OrderStatus = "new" | "confirmed" | "processing" | "completed" | "cancelled";
@@ -44,7 +47,10 @@ export type OrderSource = "customer" | "sales_manual";
 export type OrderItem = {
   id: string;
   productId: string;
+  variantId?: string;
+  sku?: string;
   productName: string;
+  options?: SelectedProductOptions;
   unitPrice: number;
   quantity: number;
   lineTotal: number;

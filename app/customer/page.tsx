@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CustomerBottomNav } from "@/components/layout/customer-bottom-nav";
-import { ProductOptionPicker, productNeedsOptions } from "@/components/ui/product-option-picker";
-import type { Product, SelectedProductOptions } from "@/lib/mock/types";
+import { ProductVariantList } from "@/components/ui/product-variant-list";
+import type { Product } from "@/lib/mock/types";
 import { ALL_CATEGORIES, ALL_FAMILIES, categoryList, familyList, getProductFamily, productMatchesTaxonomy } from "@/lib/services/product-taxonomy";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatMoney } from "@/lib/utils";
@@ -16,7 +16,7 @@ export default function CustomerPage() {
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const [visibleLimit, setVisibleLimit] = useState(40);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [optionProduct, setOptionProduct] = useState<Product | null>(null);
+
 
   const families = useMemo(() => familyList(products), [products]);
   const categories = useMemo(() => categoryList(products, selectedFamily), [products, selectedFamily]);
@@ -47,19 +47,7 @@ export default function CustomerPage() {
     setFilterOpen(false);
   }
 
-  function handleAdd(product: Product) {
-    if (productNeedsOptions(product)) {
-      setOptionProduct(product);
-      return;
-    }
-    addToCart(product.id);
-  }
-
-  function confirmOptions(options: SelectedProductOptions) {
-    if (!optionProduct) return;
-    addToCart(optionProduct.id, options);
-    setOptionProduct(null);
-  }
+  function handleAdd(product: Product) { addToCart(product.id); }
 
   return (
     <main className="phone-page pb-28">
@@ -130,8 +118,7 @@ export default function CustomerPage() {
               <div className="min-w-0">
                 <h3 className="truncate text-base font-black text-slate-950">{product.name}</h3>
                 <p className="mt-1 truncate text-sm text-slate-500">{getProductFamily(product)} · {product.category || "Chưa phân nhóm"}</p>
-                {productNeedsOptions(product) && <p className="mt-1 text-xs font-black text-amber-700">Cần chọn vị/biến thể</p>}
-                <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p>
+                <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p><ProductVariantList product={product} onAdd={(variant)=>addToCart(product.id,variant)} />
               </div>
               <button onClick={() => handleAdd(product)} className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-700 text-2xl font-semibold leading-none text-white shadow-sm" aria-label={`Thêm ${product.name} vào giỏ`}>+</button>
             </article>
@@ -141,7 +128,7 @@ export default function CustomerPage() {
       </section>
 
       <CustomerBottomNav />
-      {optionProduct && <ProductOptionPicker product={optionProduct} onClose={() => setOptionProduct(null)} onConfirm={confirmOptions} />}
+
     </main>
   );
 }

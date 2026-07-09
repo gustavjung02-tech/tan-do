@@ -57,6 +57,12 @@ export async function getNotificationUserIdsByRoles(roles: AppRole[]) {
   return uniqueIds((data ?? []).map((profile) => profile.id as string));
 }
 
+
+export async function createNotification(input: {userIds:string[];title:string;message:string;type?:string;url?:string;data?:Record<string,unknown>}) {
+  if (!supabaseAdmin || input.userIds.length===0) return;
+  await supabaseAdmin.from("notifications").insert(input.userIds.map(user_id => ({user_id,title:input.title,message:input.message,type:input.type??"system",url:input.url,data:input.data??{}})));
+}
+
 export async function sendOneSignalNotification(input: SendNotificationInput): Promise<NotificationResult> {
   const appId = process.env.ONESIGNAL_APP_ID ?? process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
   const restApiKey = process.env.ONESIGNAL_REST_API_KEY;
@@ -113,6 +119,7 @@ export async function notifyStaffAboutNewOrder(order: {
   total?: number | string | null;
 }) {
   const staffIds = await getNotificationUserIdsByRoles(["sales", "admin"]);
+  await createNotification({ userIds: staffIds, title: `??n m?i ${order.code}`, message: `${order.customer_name ?? "Kh?ch h?ng"} v?a g?i ??n m?i.`, type:"new_order", url:`/sales/orders/${order.id}` });
   return sendOneSignalNotification({
     userIds: staffIds,
     title: `ÄÆ¡n má»›i ${order.code}`,
