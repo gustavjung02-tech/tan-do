@@ -119,11 +119,11 @@ export async function notifyStaffAboutNewOrder(order: {
   total?: number | string | null;
 }) {
   const staffIds = await getNotificationUserIdsByRoles(["sales", "admin"]);
-  await createNotification({ userIds: staffIds, title: `??n m?i ${order.code}`, message: `${order.customer_name ?? "Kh?ch h?ng"} v?a g?i ??n m?i.`, type:"new_order", url:`/sales/orders/${order.id}` });
+  await createNotification({ userIds: staffIds, title: `Đơn mới ${order.code}`, message: `${order.customer_name ?? "Khách hàng"} vừa gửi đơn mới.`, type: "new_order", url: `/sales/orders/${order.id}` });
   return sendOneSignalNotification({
     userIds: staffIds,
-    title: `ÄÆ¡n má»›i ${order.code}`,
-    message: `${order.customer_name ?? "KhÃ¡ch hÃ ng"} vá»«a gá»­i Ä‘Æ¡n má»›i.`,
+    title: `Đơn mới ${order.code}`,
+    message: `${order.customer_name ?? "Khách hàng"} vừa gửi đơn mới.`,
     url: `/sales/orders/${order.id}`,
     data: {
       type: "new_order",
@@ -134,11 +134,11 @@ export async function notifyStaffAboutNewOrder(order: {
 }
 
 const statusLabels: Record<string, string> = {
-  new: "má»›i",
-  confirmed: "Ä‘Ã£ xÃ¡c nháº­n",
-  processing: "Ä‘ang xá»­ lÃ½",
-  completed: "Ä‘Ã£ hoÃ n táº¥t",
-  cancelled: "Ä‘Ã£ há»§y",
+  new: "mới",
+  confirmed: "đã xác nhận",
+  processing: "đang xử lý",
+  completed: "đã hoàn tất",
+  cancelled: "đã hủy",
 };
 
 export async function notifyCustomerAboutOrderStatus(order: {
@@ -153,8 +153,8 @@ export async function notifyCustomerAboutOrderStatus(order: {
 
   return sendOneSignalNotification({
     userIds: [order.customer_id],
-    title: `Cáº­p nháº­t Ä‘Æ¡n ${order.code}`,
-    message: `ÄÆ¡n hÃ ng cá»§a anh ${statusLabels[order.status] ?? order.status}.`,
+    title: `Cập nhật đơn ${order.code}`,
+    message: `Đơn hàng của anh ${statusLabels[order.status] ?? order.status}.`,
     url: `/customer/orders/${order.id}`,
     data: {
       type: "order_status_changed",
