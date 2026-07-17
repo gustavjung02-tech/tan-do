@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import CustomerProfileForm, { mapCustomerApiToForm, CustomerApiRecord } from "@/components/customer/customer-profile-form";
+import CustomerProfileForm, { mapCustomerApiToForm, CustomerApiRecord, type CustomerFormData } from "@/components/customer/customer-profile-form";
 
 export default function CustomerSetupPage() {
   const router = useRouter();
-  const [initial, setInitial] = useState<Record<string, unknown> | null>(null);
+  const [initial, setInitial] = useState<CustomerFormData | null>(null);
 
   useEffect(() => {
     let mounted = true;

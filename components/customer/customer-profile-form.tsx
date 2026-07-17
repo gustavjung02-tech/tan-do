@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import vietnamAdminUnitsData from "@/data/vietnam-admin-units.json";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -90,6 +90,15 @@ export default function CustomerProfileForm({ initial, onSaved, onClose, submitL
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setForm({
+      ...emptyForm,
+      ...(initial ?? {}),
+    });
+    setError(null);
+    setLocationMessage(null);
+  }, [initial]);
 
   const selectedProvince = useMemo(() => vietnamAdminUnits.find((p) => String(p.code) === form.provinceCode) ?? null, [form.provinceCode]);
   const wardOptions = selectedProvince?.wards ?? [];
