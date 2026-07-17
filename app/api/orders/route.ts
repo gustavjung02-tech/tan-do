@@ -4,6 +4,22 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifyStaffAboutNewOrder } from "@/lib/services/notifications";
 import type { CartItem, Order, OrderStatus, SelectedProductOptions } from "@/lib/mock/types";
 
+type ProductVariantRow = {
+  id: string;
+  product_id: string;
+  sku?: string | null;
+  options?: Record<string, string> | null;
+  price: number | string;
+};
+
+type ProductRow = {
+  id: string;
+  name: string;
+  sku: string | null;
+  price: number | string;
+  is_active: boolean | null;
+};
+
 type OrderItemRow = {
   id: string;
   product_id: string | null;
@@ -42,6 +58,18 @@ type CreateOrderBody = {
   items?: CartItem[];
   clientRequestId?: string;
 };
+
+function normalizeText(value?: string | null) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeQuantity(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value)) return null;
+  if (value <= 0 || value > 999) return null;
+  return value;
+}
 
 
 function normalizeOptions(options?: SelectedProductOptions): SelectedProductOptions | undefined {
@@ -192,38 +220,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Đơn hàng chưa có sản phẩm." }, { status: 400 });
   }
 
-  const productIds = items.map((item) => item.productId);
+  const productIds = items.map((item) => item.productId).filter(Boolean);
   const { data: products, error: productsError } = await supabaseAdmin
     .from("products")
-    .select("id,name,sku,price,option_groups")
+    .select("id,name,sku,price,is_active")
     .in("id", productIds);
 
   if (productsError) {
     return NextResponse.json({ error: productsError.message }, { status: 500 });
   }
 
-  const orderItems = items.map((item) => {
-    const product = products?.find((entry) => entry.id === item.productId);
-    if (!product) return null;
-    const unitPrice = Number(item.unitPrice ?? product.price);
-    const quantity = item.quantity;
-    return {
-      product_id: product.id,
-      product_name: formatProductNameWithOptions(product.name, item.options),
-      variant_id: item.variantId ?? null,
-      sku: item.sku ?? product.sku ?? null,
-      options: item.options ?? null,
-      unit_price: unitPrice,
-      quantity,
-      line_total: unitPrice * quantity,
-    };
-  }).filter(Boolean) as Array<{
+  const { data: variants, error: variantsError } = await supabaseAdmin
+    .from("product_variants")
+    .select("id,product_id,sku,options,price")
+    .in("product_id", productIds);
+
+  if (variantsError) {
+    return NextResponse.json({ error: variantsError.message }, { status: 500 });
+  }
+
+  const orderItems = [] as Array<{
     product_id: string;
     product_name: string;
     unit_price: number;
     quantity: number;
     line_total: number;
+    variant_id: string | null;
+    sku: string | null;
+    options: SelectedProductOptions | undefined;
   }>;
+
+  for (const item of items) {
+    const product = products?.find((entry) => entry.id === item.productId);
+    if (!product) {
+      return NextResponse.json({ error: "Một sản phẩm trong đơn hàng không tồn tại." }, { status: 400 });
+    }
+
+    if (product.is_active === false) {
+      return NextResponse.json({ error: "Một sản phẩm trong đơn hàng hiện không còn bán." }, { status: 400 });
+    }
+
+    const quantity = normalizeQuantity(item.quantity);
+    if (!quantity) {
+      return NextResponse.json({ error: "Số lượng sản phẩm không hợp lệ." }, { status: 400 });
+    }
+
+    const productVariants = (variants ?? []).filter((variant) => variant.product_id === product.id);
+    const hasVariants = productVariants.length > 0;
+    if (hasVariants && !item.variantId) {
+      return NextResponse.json({ error: "Sản phẩm này cần chọn biến thể." }, { status: 400 });
+    }
+
+    const matchingVariant = item.variantId
+      ? productVariants.find((variant) => variant.id === item.variantId) ?? null
+      : null;
+
+    if (item.variantId && !matchingVariant) {
+      return NextResponse.json({ error: "Biến thể không thuộc sản phẩm này." }, { status: 400 });
+    }
+
+    const resolvedPrice = Number(matchingVariant?.price ?? product.price);
+    const resolvedSku = matchingVariant?.sku ?? product.sku ?? null;
+    const normalizedOptions = normalizeOptions(item.options) ?? normalizeOptions(matchingVariant?.options);
+
+    orderItems.push({
+      product_id: product.id,
+      product_name: product.name,
+      unit_price: resolvedPrice,
+      quantity,
+      line_total: resolvedPrice * quantity,
+      variant_id: matchingVariant?.id ?? (item.variantId ?? null),
+      sku: resolvedSku,
+      options: normalizedOptions,
+    });
+  }
 
   if (orderItems.length === 0) {
     return NextResponse.json({ error: "Không tìm thấy sản phẩm hợp lệ." }, { status: 400 });
@@ -244,13 +314,13 @@ export async function POST(request: Request) {
       code: codeData,
       customer_id: customerId,
       customer_record_id: customerRecordId,
-      customer_name: customerName,
-      customer_phone: customerPhone,
+      customer_name: normalizeText(customerName) ?? "Khách chưa đặt tên",
+      customer_phone: normalizeText(customerPhone) ?? "Chưa có SĐT",
       client_request_id: source === "customer" ? clientRequestId : null,
       source,
       status,
-      customer_note: body.customerNote?.trim() || null,
-      sales_note: body.salesNote?.trim() || null,
+      customer_note: normalizeText(body.customerNote) ?? null,
+      sales_note: normalizeText(body.salesNote) ?? null,
       total,
     })
     .select("*")
