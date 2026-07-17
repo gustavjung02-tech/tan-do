@@ -16,7 +16,7 @@ export function CustomerGate({ children }: { children: React.ReactNode }) {
     if (!session) {
       const query = searchParams.toString();
       const next = `${pathname}${query ? `?${query}` : ""}`;
-      router.replace(`/login?tab=customer&next=${encodeURIComponent(next)}`);
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
     }
   }, [loading, session, pathname, router, searchParams]);
 
@@ -36,8 +36,8 @@ export function CustomerGate({ children }: { children: React.ReactNode }) {
       <main className="grid min-h-screen place-items-center bg-emerald-50 px-4">
         <div className="rounded-3xl bg-white p-6 text-center card-shadow ring-1 ring-emerald-100">
           <p className="text-xl font-black text-slate-950">Chưa có hồ sơ khách</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">Anh đăng ký lại ở tab Khách/quán để tạo hồ sơ trước khi đặt hàng.</p>
-          <Link href="/login?tab=customer" className="mt-5 block rounded-2xl bg-emerald-700 px-4 py-4 font-black text-white">Về đăng nhập</Link>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">Anh đăng ký lại để tạo hồ sơ trước khi đặt hàng.</p>
+          <Link href="/login" className="mt-5 block rounded-2xl bg-emerald-700 px-4 py-4 font-black text-white">Về đăng nhập</Link>
         </div>
       </main>
     );

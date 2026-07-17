@@ -16,7 +16,7 @@ export function StaffGate({ children }: { children: React.ReactNode }) {
     if (!session) {
       const query = searchParams.toString();
       const next = `${pathname}${query ? `?${query}` : ""}`;
-      router.replace(`/login?tab=sales&next=${encodeURIComponent(next)}`);
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
     }
   }, [loading, session, pathname, router, searchParams]);
 
