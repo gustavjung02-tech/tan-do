@@ -19,10 +19,18 @@ export function LoginForm() {
   async function loginWithGoogle() {
     if (!supabaseBrowser) return;
     setError(null);
+
+    const next = params.get("next");
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+
+    if (next) {
+      callbackUrl.searchParams.set("next", next);
+    }
+
     const { error } = await supabaseBrowser.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
         scopes: "https://www.googleapis.com/auth/userinfo.email",
       },
     });

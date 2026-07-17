@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -53,8 +53,26 @@ export default function AuthCallbackPage() {
           throw new Error(sessionError?.message || "Không nhận được phiên đăng nhập.");
         }
 
+        const session = sessionData.session;
+        const profileResponse = await fetch("/api/auth/profile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            fullName: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name ?? session.user.email ?? "",
+            phone: session.user.user_metadata?.phone ?? "",
+          }),
+        });
+
+        if (!profileResponse.ok) {
+          const payload = await profileResponse.json().catch(() => ({}));
+          throw new Error(payload?.error || "Không tạo được hồ sơ người dùng.");
+        }
+
         const destination = await resolvePostLoginDestination({
-          accessToken: sessionData.session.access_token,
+          accessToken: session.access_token,
           next: params.get("next"),
         });
 

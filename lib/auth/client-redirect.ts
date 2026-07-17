@@ -69,9 +69,19 @@ export async function resolvePostLoginDestination({ accessToken, next }: Resolve
 
   if (role === "customer") {
     const customer = await fetchCustomerProfile(accessToken);
-    const isComplete = Boolean(customer?.name && customer?.phone && customer?.address && customer?.province && customer?.ward);
-    const destination = isComplete ? "/customer" : "/customer/setup";
-    return isSafeDestination(next, role) ? next || destination : destination;
+    const isComplete = Boolean(
+      customer?.name &&
+      customer?.phone &&
+      customer?.address &&
+      customer?.province &&
+      customer?.ward
+    );
+
+    if (!isComplete) {
+      return "/customer/setup";
+    }
+
+    return isSafeDestination(next, role) ? next || "/customer" : "/customer";
   }
 
   return "/login";

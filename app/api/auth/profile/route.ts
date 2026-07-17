@@ -17,23 +17,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Anh cần đăng nhập để tạo hồ sơ khách." }, { status: 401 });
   }
 
-  const body = await request.json() as ProfileBody;
+  const body = await request.json().catch(() => ({})) as ProfileBody;
   const fullName = body.fullName?.trim() || user.email || "Khách Tân Đô";
   const phone = body.phone?.trim() || null;
 
+  const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (existingProfileError) {
+    return NextResponse.json({ error: `Không đọc được hồ sơ: ${existingProfileError.message}` }, { status: 500 });
+  }
+
+  if (!existingProfile) {
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .insert({
+        id: user.id,
+        full_name: fullName,
+        phone,
+      })
+      .select("id,full_name,phone,role")
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: `Không tạo được hồ sơ: ${error.message}` }, { status: 500 });
+    }
+
+    return NextResponse.json({ profile: data });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .upsert({
-      id: user.id,
+    .update({
       full_name: fullName,
       phone,
-      role: "customer",
-    }, { onConflict: "id" })
+    })
+    .eq("id", user.id)
     .select("id,full_name,phone,role")
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: `Không cập nhật hồ sơ: ${error.message}` }, { status: 500 });
   }
 
   return NextResponse.json({ profile: data });

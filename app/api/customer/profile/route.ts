@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import vietnamAdminUnitsData from "@/data/vietnam-admin-units.json";
