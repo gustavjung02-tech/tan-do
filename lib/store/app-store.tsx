@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { mockProducts } from "@/lib/mock/data";
-import type { CartItem, Order, OrderStatus, Product, ProductVariant, SelectedProductOptions } from "@/lib/mock/types";
+import type { CartItem, CartItemIdentity, Order, OrderStatus, Product, ProductVariant, SelectedProductOptions } from "@/lib/mock/types";
 import { fetchProductsWithFallback } from "@/lib/services/products";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -29,9 +29,9 @@ type AppStore = {
   hydrated: boolean;
   reloadProducts: () => Promise<void>;
   reloadOrders: () => Promise<void>;
-  addToCart: (productId: string, variant?: ProductVariant | SelectedProductOptions) => void;
-  decreaseCartItem: (productId: string, variant?: ProductVariant | SelectedProductOptions) => void;
-  removeCartItem: (productId: string, variant?: ProductVariant | SelectedProductOptions) => void;
+  addToCart: (item: CartItemIdentity) => void;
+  decreaseCartItem: (item: CartItemIdentity) => void;
+  removeCartItem: (item: CartItemIdentity) => void;
   clearCart: () => void;
   createCustomerOrder: (payload: { customerNote?: string; clientRequestId?: string }) => Promise<Order | null>;
   acceptOrder: (orderId: string) => Promise<void>;
@@ -58,6 +58,22 @@ function normalizeOptions(options?: SelectedProductOptions): SelectedProductOpti
     .map(([key, value]) => [key.trim(), value.trim()] as const)
     .filter(([key, value]) => key && value);
   return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function buildCartItem(product: Product, item: CartItemIdentity): CartItem {
+  const variant = item.variantId
+    ? product.variants?.find((entry) => entry.id === item.variantId)
+    : product.variants?.find((entry) => sameOptions(entry.options, item.options));
+
+  const normalizedOptions = normalizeOptions(item.options ?? variant?.options);
+  return {
+    productId: item.productId,
+    variantId: variant?.id ?? item.variantId,
+    sku: variant?.sku ?? product.sku,
+    options: normalizedOptions,
+    unitPrice: Number(variant?.price ?? product.price),
+    quantity: 1,
+  };
 }
 
 function sameOptions(a?: SelectedProductOptions, b?: SelectedProductOptions) {
@@ -179,35 +195,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     hydrated,
     reloadProducts,
     reloadOrders,
-    addToCart(productId, variantOrOptions) {
-      const product = products.find((entry) => entry.id === productId);
+    addToCart(item) {
+      const product = products.find((entry) => entry.id === item.productId);
       if (!product) return;
-      const variant = variantOrOptions && typeof variantOrOptions === "object" && "variantKey" in variantOrOptions ? variantOrOptions as ProductVariant : undefined;
-      const options = variant?.options ?? (variantOrOptions as SelectedProductOptions | undefined);
-      const normalizedOptions = normalizeOptions(options);
-      const item = {
-        productId,
-        variantId: variant?.id,
-        sku: variant?.sku ?? product.sku,
-        options: normalizedOptions,
-        unitPrice: Number(variant?.price ?? product.price),
-        quantity: 1,
-      };
+      const candidate = buildCartItem(product, item);
       setCart((current) => {
-        const exists = current.find((entry) => entry.productId === productId && entry.variantId === item.variantId && sameOptions(entry.options, normalizedOptions));
-        if (!exists) return [...current, item];
-        return current.map((entry) => entry.productId === productId && entry.variantId === item.variantId && sameOptions(entry.options, normalizedOptions) ? { ...entry, quantity: entry.quantity + 1 } : entry);
+        const exists = current.find((entry) => entry.productId === candidate.productId && entry.variantId === candidate.variantId && sameOptions(entry.options, candidate.options));
+        if (!exists) return [...current, { ...candidate, quantity: 1 }];
+        return current.map((entry) => entry.productId === candidate.productId && entry.variantId === candidate.variantId && sameOptions(entry.options, candidate.options) ? { ...entry, quantity: entry.quantity + 1 } : entry);
       });
     },
-    decreaseCartItem(productId, variantOrOptions) {
-      const variantId = variantOrOptions && typeof variantOrOptions === "object" && "variantKey" in variantOrOptions ? variantOrOptions.id : undefined;
-      const options = variantOrOptions && !(typeof variantOrOptions === "object" && "variantKey" in variantOrOptions) ? variantOrOptions as SelectedProductOptions : undefined;
-      setCart((current) => current.map((item) => item.productId === productId && item.variantId === variantId && sameOptions(item.options, options) ? { ...item, quantity: item.quantity - 1 } : item).filter((item) => item.quantity > 0));
+    decreaseCartItem(item) {
+      setCart((current) => current.map((entry) => entry.productId === item.productId && entry.variantId === item.variantId && sameOptions(entry.options, item.options) ? { ...entry, quantity: entry.quantity - 1 } : entry).filter((entry) => entry.quantity > 0));
     },
-    removeCartItem(productId, variantOrOptions) {
-      const variantId = variantOrOptions && typeof variantOrOptions === "object" && "variantKey" in variantOrOptions ? variantOrOptions.id : undefined;
-      const options = variantOrOptions && !(typeof variantOrOptions === "object" && "variantKey" in variantOrOptions) ? variantOrOptions as SelectedProductOptions : undefined;
-      setCart((current) => current.filter((item) => !(item.productId === productId && item.variantId === variantId && sameOptions(item.options, options))));
+    removeCartItem(item) {
+      setCart((current) => current.filter((entry) => !(entry.productId === item.productId && entry.variantId === item.variantId && sameOptions(entry.options, item.options))));
     },
     clearCart() {
       setCart([]);

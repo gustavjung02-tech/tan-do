@@ -32,11 +32,14 @@ export type Product = {
   variants?: ProductVariant[];
 };
 
-export type CartItem = {
+export type CartItemIdentity = {
   productId: string;
   variantId?: string;
-  sku?: string;
   options?: SelectedProductOptions;
+};
+
+export type CartItem = CartItemIdentity & {
+  sku?: string;
   quantity: number;
   unitPrice: number;
 };

@@ -92,13 +92,13 @@ export default function CartPage() {
                     {optionLabel(options) && <p className="mt-1 text-xs font-bold text-amber-700">{optionLabel(options)}</p>}
                     <p className="mt-1 text-sm font-black text-emerald-700">{formatMoney(item.unitPrice)}</p>
                   </div>
-                  <button disabled={submitting} onClick={() => removeCartItem(product.id, options)} className="text-sm font-black text-slate-400 disabled:opacity-40">Xóa</button>
+                  <button disabled={submitting} onClick={() => removeCartItem(item)} className="text-sm font-black text-slate-400 disabled:opacity-40">Xóa</button>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white">
-                    <button disabled={submitting} onClick={() => decreaseCartItem(product.id, options)} className="h-8 w-9 text-lg disabled:opacity-40">−</button>
+                    <button disabled={submitting} onClick={() => decreaseCartItem(item)} className="h-8 w-9 text-lg disabled:opacity-40">−</button>
                     <span className="w-9 text-center text-sm font-black">{quantity}</span>
-                    <button disabled={submitting} onClick={() => addToCart(product.id, options)} className="h-8 w-9 text-lg disabled:opacity-40">+</button>
+                    <button disabled={submitting} onClick={() => addToCart(item)} className="h-8 w-9 text-lg disabled:opacity-40">+</button>
                   </div>
                   <p className="text-sm font-black text-slate-950">{formatMoney(item.unitPrice * quantity)}</p>
                 </div>

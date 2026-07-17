@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { CustomerBottomNav } from "@/components/layout/customer-bottom-nav";
 import { ProductVariantList } from "@/components/ui/product-variant-list";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import type { Product } from "@/lib/mock/types";
+import type { CartItemIdentity, Product } from "@/lib/mock/types";
 import { ALL_CATEGORIES, ALL_FAMILIES, categoryList, familyList, getProductFamily, productMatchesTaxonomy } from "@/lib/services/product-taxonomy";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatMoney } from "@/lib/utils";
@@ -51,7 +51,9 @@ export default function CustomerPage() {
     setFilterOpen(false);
   }
 
-  function handleAdd(product: Product) { addToCart(product.id); }
+  function handleAdd(product: Product) {
+    addToCart({ productId: product.id });
+  }
 
   return (
     <main className="phone-page pb-28">
@@ -123,9 +125,20 @@ export default function CustomerPage() {
               <div className="min-w-0">
                 <h3 className="truncate text-base font-black text-slate-950">{product.name}</h3>
                 <p className="mt-1 truncate text-sm text-slate-500">{getProductFamily(product)} · {product.category || "Chưa phân nhóm"}</p>
-                {product.variants?.length ? <ProductVariantList product={product} onAdd={(variant)=>addToCart(product.id,variant)} /> : <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p>}
+                {product.variants?.length ? (
+                  <ProductVariantList
+                    product={product}
+                    onAdd={(variant) => addToCart({ productId: product.id, variantId: variant.id, options: variant.options })}
+                  />
+                ) : (
+                  <p className="mt-2 font-black text-emerald-700">{formatMoney(product.price)}</p>
+                )}
               </div>
-              <button onClick={() => handleAdd(product)} className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-700 text-2xl font-semibold leading-none text-white shadow-sm" aria-label={`Thêm ${product.name} vào giỏ`}>+</button>
+              {!product.variants?.length && (
+                <button onClick={() => handleAdd(product)} className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-700 text-2xl font-semibold leading-none text-white shadow-sm" aria-label={`Thêm ${product.name} vào giỏ`}>
+                  +
+                </button>
+              )}
             </article>
           ))}
           {visibleLimit < filteredProducts.length && <button onClick={() => setVisibleLimit((current) => current + 40)} className="rounded-2xl bg-white px-4 py-4 font-black text-emerald-700 ring-1 ring-emerald-100">Xem thêm sản phẩm</button>}
