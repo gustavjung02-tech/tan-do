@@ -18,12 +18,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({})) as ProfileBody;
-  const fullName = body.fullName?.trim() || user.email || "Khách Tân Đô";
-  const phone = body.phone?.trim() || null;
+  const trimmedFullName = body.fullName?.trim();
+  const trimmedPhone = body.phone?.trim();
+  const resolvedFullName = trimmedFullName || user.email || "Khách Tân Đô";
+  const resolvedPhone = trimmedPhone || null;
 
   const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
     .from("profiles")
-    .select("id")
+    .select("id,full_name,phone,role")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -36,8 +38,8 @@ export async function POST(request: Request) {
       .from("profiles")
       .insert({
         id: user.id,
-        full_name: fullName,
-        phone,
+        full_name: resolvedFullName,
+        phone: resolvedPhone,
       })
       .select("id,full_name,phone,role")
       .single();
@@ -49,12 +51,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ profile: data });
   }
 
+  const updateFields: Record<string, string | null> = {};
+  if (trimmedFullName) {
+    updateFields.full_name = trimmedFullName;
+  }
+  if (trimmedPhone) {
+    updateFields.phone = trimmedPhone;
+  }
+
+  if (Object.keys(updateFields).length === 0) {
+    return NextResponse.json({ profile: existingProfile });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .update({
-      full_name: fullName,
-      phone,
-    })
+    .update(updateFields)
     .eq("id", user.id)
     .select("id,full_name,phone,role")
     .single();
