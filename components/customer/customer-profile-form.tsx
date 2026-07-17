@@ -41,9 +41,47 @@ const emptyForm: CustomerFormData = {
 
 const vietnamAdminUnits = vietnamAdminUnitsData as VietnamProvince[];
 
+export type CustomerApiRecord = {
+  id?: string;
+  auth_user_id?: string | null;
+  name?: string | null;
+  phone?: string | null;
+  contact_person?: string | null;
+  address?: string | null;
+  area?: string | null;
+  ward?: string | null;
+  district?: string | null;
+  province?: string | null;
+  province_code?: string | number | null;
+  ward_code?: string | number | null;
+  note?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  [key: string]: unknown;
+};
+
+export function mapCustomerApiToForm(customer: CustomerApiRecord | null | undefined): CustomerFormData | null {
+  if (!customer) return null;
+  return {
+    name: (customer.name ?? "") as string,
+    phone: (customer.phone ?? "") as string,
+    contactPerson: (customer.contact_person ?? "") as string,
+    address: (customer.address ?? "") as string,
+    area: (customer.area ?? "") as string,
+    ward: (customer.ward ?? "") as string,
+    district: (customer.district ?? null) as string | null,
+    province: (customer.province ?? "") as string,
+    provinceCode: String(customer.province_code ?? ""),
+    wardCode: String(customer.ward_code ?? ""),
+    note: (customer.note ?? "") as string,
+    latitude: typeof customer.latitude === "number" ? customer.latitude : null,
+    longitude: typeof customer.longitude === "number" ? customer.longitude : null,
+  };
+}
+
 export default function CustomerProfileForm({ initial, onSaved, onClose, submitLabel = "Lưu thay đổi" }: {
   initial?: Partial<CustomerFormData> | null;
-  onSaved?: (data: any) => void;
+  onSaved?: (data: CustomerApiRecord) => void;
   onClose?: () => void;
   submitLabel?: string;
 }) {
@@ -137,7 +175,10 @@ export default function CustomerProfileForm({ initial, onSaved, onClose, submitL
       }
 
       const saved = await response.json().catch(() => null);
-      if (onSaved) onSaved(saved?.customer ?? saved);
+      const apiCustomer = saved?.customer ?? saved;
+      if (onSaved && apiCustomer && typeof apiCustomer === "object") {
+        onSaved(apiCustomer as CustomerApiRecord);
+      }
       if (onClose) onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không lưu được thông tin quán.");

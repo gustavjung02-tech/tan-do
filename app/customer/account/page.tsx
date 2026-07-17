@@ -7,7 +7,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import Modal from "@/components/ui/modal";
-import CustomerProfileForm, { CustomerFormData } from "@/components/customer/customer-profile-form";
+import CustomerProfileForm, { CustomerFormData, mapCustomerApiToForm, CustomerApiRecord } from "@/components/customer/customer-profile-form";
 
 export default function CustomerAccountPage() {
   const { profile, signOut } = useAuth();
@@ -44,7 +44,9 @@ export default function CustomerAccountPage() {
 
         const payload = await res.json().catch(() => null);
         if (!mounted) return;
-        setCustomer(payload?.customer ?? null);
+        const apiCustomer = payload?.customer as CustomerApiRecord | null | undefined;
+        const mapped = mapCustomerApiToForm(apiCustomer);
+        setCustomer(mapped);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -94,9 +96,9 @@ export default function CustomerAccountPage() {
       <Modal open={open} title="Chỉnh sửa thông tin quán" onClose={() => setOpen(false)}>
         <CustomerProfileForm
           initial={customer ?? undefined}
-          onSaved={(saved) => {
-            // update local summary and show success
-            setCustomer((prev) => ({ ...prev, ...(saved ?? {}) } as CustomerFormData));
+          onSaved={(apiCustomer) => {
+            const mapped = mapCustomerApiToForm(apiCustomer ?? null);
+            if (mapped) setCustomer(mapped);
             setSuccessMessage("Đã cập nhật thông tin quán");
             setTimeout(() => setSuccessMessage(null), 3000);
           }}
