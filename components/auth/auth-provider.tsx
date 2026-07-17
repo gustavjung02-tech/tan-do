@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-type AppRole = "customer" | "sales" | "admin";
+type AppRole = "customer" | "sales";
 
 type AuthProfile = {
   id: string;
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthState>(() => {
-    const isStaff = profile?.role === "sales" || profile?.role === "admin";
+    const isStaff = profile?.role === "sales";
     return { loading, session, profile, isStaff, refreshProfile, signOut };
   }, [loading, session, profile]);
 

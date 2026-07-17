@@ -2,7 +2,7 @@
 
 const ONESIGNAL_API_URL = "https://api.onesignal.com/notifications";
 
-type AppRole = "customer" | "sales" | "admin";
+type AppRole = "customer" | "sales";
 
 type SendNotificationInput = {
   userIds: string[];
@@ -118,7 +118,7 @@ export async function notifyStaffAboutNewOrder(order: {
   customer_name?: string | null;
   total?: number | string | null;
 }) {
-  const staffIds = await getNotificationUserIdsByRoles(["sales", "admin"]);
+  const staffIds = await getNotificationUserIdsByRoles(["sales"]);
   await createNotification({ userIds: staffIds, title: `Đơn mới ${order.code}`, message: `${order.customer_name ?? "Khách hàng"} vừa gửi đơn mới.`, type: "new_order", url: `/sales/orders/${order.id}` });
   return sendOneSignalNotification({
     userIds: staffIds,

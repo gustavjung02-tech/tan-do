@@ -7,6 +7,33 @@ type ProfileBody = {
   phone?: string;
 };
 
+type ProfileRole = "customer" | "sales";
+
+function normalizeEmail(value?: string | null) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+async function resolveProfileRole(email: string | null): Promise<ProfileRole> {
+  if (!supabaseAdmin || !email) {
+    return "customer";
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("sales_accounts")
+    .select("is_active")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to resolve sales account role", error);
+    return "customer";
+  }
+
+  return data?.is_active === true ? "sales" : "customer";
+}
+
 export async function POST(request: Request) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Chưa cấu hình Supabase server." }, { status: 500 });
@@ -20,7 +47,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as ProfileBody;
   const trimmedFullName = body.fullName?.trim();
   const trimmedPhone = body.phone?.trim();
-  const resolvedFullName = trimmedFullName || user.email || "Khách Tân Đô";
+  const normalizedEmail = normalizeEmail(user.email);
+  const resolvedRole = await resolveProfileRole(normalizedEmail);
+  const resolvedFullName = trimmedFullName || normalizedEmail || user.email || "Khách Tân Đô";
   const resolvedPhone = trimmedPhone || null;
 
   const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
@@ -40,6 +69,7 @@ export async function POST(request: Request) {
         id: user.id,
         full_name: resolvedFullName,
         phone: resolvedPhone,
+        role: resolvedRole,
       })
       .select("id,full_name,phone,role")
       .single();
@@ -51,16 +81,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ profile: data });
   }
 
-  const updateFields: Record<string, string | null> = {};
+  const updateFields: Record<string, string | null> = {
+    role: resolvedRole,
+  };
+
   if (trimmedFullName) {
     updateFields.full_name = trimmedFullName;
   }
   if (trimmedPhone) {
     updateFields.phone = trimmedPhone;
-  }
-
-  if (Object.keys(updateFields).length === 0) {
-    return NextResponse.json({ profile: existingProfile });
   }
 
   const { data, error } = await supabaseAdmin

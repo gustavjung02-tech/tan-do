@@ -32,6 +32,9 @@ export function LoginForm() {
       options: {
         redirectTo: callbackUrl.toString(),
         scopes: "https://www.googleapis.com/auth/userinfo.email",
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
 

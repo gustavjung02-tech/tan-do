@@ -65,7 +65,7 @@ export async function GET(request: Request, context: Params) {
   }
 
   const { id } = await context.params;
-  const isStaff = auth.context.profile.role === "sales" || auth.context.profile.role === "admin";
+  const isStaff = auth.context.profile.role === "sales";
 
   let query = supabaseAdmin
     .from("orders")

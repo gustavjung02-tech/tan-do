@@ -37,7 +37,7 @@ export function StaffGate({ children }: { children: React.ReactNode }) {
         <div className="rounded-3xl bg-white p-6 text-center card-shadow ring-1 ring-slate-100">
           <p className="text-xl font-black text-slate-950">Không có quyền sales</p>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-            Tài khoản hiện tại là {profile?.role ?? "chưa rõ quyền"}. Khu vực này chỉ dành cho sales/admin.
+            Tài khoản hiện tại là {profile?.role ?? "chưa rõ quyền"}. Khu vực này chỉ dành cho sales.
           </p>
           <Link href="/customer" className="mt-5 block rounded-2xl bg-blue-700 px-4 py-4 font-black text-white">Về trang khách</Link>
         </div>

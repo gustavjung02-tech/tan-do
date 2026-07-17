@@ -5,7 +5,7 @@ type ResolveDestinationOptions = {
   next?: string | null;
 };
 
-function isSafeDestination(next: string | null | undefined, role: "customer" | "sales" | "admin") {
+function isSafeDestination(next: string | null | undefined, role: "customer" | "sales") {
   if (!next) return true;
 
   const normalized = next.trim();
@@ -31,7 +31,7 @@ async function fetchProfileRole(accessToken: string) {
   }
 
   const payload = await response.json().catch(() => ({}));
-  return payload?.profile?.role as "customer" | "sales" | "admin" | undefined;
+  return payload?.profile?.role as "customer" | "sales" | undefined;
 }
 
 async function fetchCustomerProfile(accessToken: string) {
@@ -63,7 +63,7 @@ export async function resolvePostLoginDestination({ accessToken, next }: Resolve
 
   const role = await fetchProfileRole(accessToken);
 
-  if (role === "sales" || role === "admin") {
+  if (role === "sales") {
     return isSafeDestination(next, role) ? next || "/sales" : "/sales";
   }
 

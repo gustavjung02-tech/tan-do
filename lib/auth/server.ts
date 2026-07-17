@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-export type AppRole = "customer" | "sales" | "admin";
+export type AppRole = "customer" | "sales";
 
 export type AuthProfile = {
   id: string;
@@ -76,11 +76,11 @@ export async function requireAuth(request: Request) {
 export async function requireStaff(request: Request) {
   const context = await getAuthContext(request);
   if (!context) {
-    return { ok: false as const, status: 401, message: "Anh cần đăng nhập tài khoản sales/admin." };
+    return { ok: false as const, status: 401, message: "Anh cần đăng nhập tài khoản sales." };
   }
 
-  if (context.profile.role !== "sales" && context.profile.role !== "admin") {
-    return { ok: false as const, status: 403, message: "Tài khoản này không có quyền sales/admin." };
+  if (context.profile.role !== "sales") {
+    return { ok: false as const, status: 403, message: "Tài khoản này không có quyền sales." };
   }
 
   return { ok: true as const, context };
